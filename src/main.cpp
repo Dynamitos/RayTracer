@@ -1,14 +1,24 @@
-#include "window/Window.h"
-#include "util/ModelLoader.h"
 #include "scene/BVH.h"
+#include "util/ModelLoader.h"
+#include "window/Window.h"
 
-int main() {
+int main()
+{
     BVH bvh;
-    bvh.addModels(ModelLoader::loadModel("../../cube.fbx"));
+    bvh.addModels(ModelLoader::loadModel("../../cube.fbx"), glm::mat4());
     bvh.generate();
-	Window w(1920, 1080);
-	while (true) {
-		w.update();
-	}
-	return 0;
+    Window w(1920, 1080);
+    std::vector<uint32_t> texture(1920 * 1080);
+    for (int j = 10; j < 100; ++j)
+    {
+        for (int i = 0; i < 1920; ++i)
+        {
+            texture[j * 1920 + i] = 0xff00ffff;
+        }
+    }
+    while (true)
+    {
+        w.update(texture);
+    }
+    return 0;
 }

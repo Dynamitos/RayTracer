@@ -11,7 +11,7 @@ set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/external/vcpkg/scripts/buil
 
 project(RayTracer)
 
-
+find_package(glew CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
@@ -21,6 +21,7 @@ add_executable(RayTracer "")
 target_include_directories(RayTracer PUBLIC src/)
 target_link_libraries(RayTracer PUBLIC assimp::assimp)
 target_link_libraries(RayTracer PUBLIC glfw)
+target_link_libraries(RayTracer PUBLIC GLEW::glew)
 target_link_libraries(RayTracer PUBLIC glm::glm)
 target_link_libraries(RayTracer PUBLIC KTX::ktx)
 

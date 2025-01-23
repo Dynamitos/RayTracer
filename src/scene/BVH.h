@@ -2,12 +2,13 @@
 #include "AABB.h"
 #include "util/Model.h"
 #include <vector>
+#include <glm/glm.hpp>
 
 class BVH
 {
   public:
-    void addModel(PModel model);
-    void addModels(std::vector<PModel> models);
+    void addModel(PModel model, glm::mat4 transform);
+    void addModels(std::vector<PModel> models, glm::mat4 transform);
     void generate();
 
   private:

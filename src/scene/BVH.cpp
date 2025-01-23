@@ -1,12 +1,17 @@
 #include "BVH.h"
 #include <list>
 
-void BVH::addModel(PModel model) { models.push_back(std::move(model)); }
+void BVH::addModel(PModel model, glm::mat4 transform)
+{
+    model->boundingBox.transform(transform);
+    models.push_back(std::move(model));
+}
 
-void BVH::addModels(std::vector<PModel> _models)
+void BVH::addModels(std::vector<PModel> _models, glm::mat4 transform)
 {
     for (int i = 0; i < _models.size(); ++i)
     {
+        _models[i]->boundingBox.transform(transform);
         models.push_back(std::move(_models[i]));
     }
 }
