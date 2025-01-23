@@ -1,10 +1,5 @@
-cmake_minimum_required(VERSION 3.7...3.23)
-if(${CMAKE_VERSION} VERSION_LESS 3.12)
-    cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
-endif()
+cmake_minimum_required(VERSION 3.28)
 set(CMAKE_CXX_STANDARD 23)
-# Handle superbuild first
-option (USE_SUPERBUILD "Whether or not a superbuild should be invoked" ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
@@ -12,8 +7,7 @@ set(CMAKE_INSTALL_MESSAGE LAZY)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-
-set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
+set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 project(RayTracer)
 
@@ -29,8 +23,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/build)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_SOURCE_DIR}/build)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_CURRENT_SOURCE_DIR}/build)
 
-find_package(Assimp CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(Ktx CONFIG REQUIRED)
 
 add_executable(RayTracer "")
+target_link_libraries(RayTracer PUBLIC glfw)
+target_link_libraries(RayTracer PUBLIC glm::glm)
+target_link_libraries(RayTracer PUBLIC KTX::ktx)
 
 add_subdirectory(src/)
