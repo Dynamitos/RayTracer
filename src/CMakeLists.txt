@@ -4,3 +4,4 @@ target_sources(RayTracer
 
 add_subdirectory(scene/)
 add_subdirectory(window/)
+add_subdirectory(util/)

@@ -4,4 +4,5 @@ target_sources(RayTracer
 		Model.cpp
 		ModelLoader.h
 		ModelLoader.cpp
+		Ray.h
 )
