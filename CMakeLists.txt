@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.7...3.23)
+if(${CMAKE_VERSION} VERSION_LESS 3.12)
+    cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
+endif()
+set(CMAKE_CXX_STANDARD 23)
+# Handle superbuild first
+option (USE_SUPERBUILD "Whether or not a superbuild should be invoked" ON)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_COMPILE_WARNING_AS_ERROR OFF)
+set(CMAKE_INSTALL_MESSAGE LAZY)
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+set(EXTERNAL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/external)
+
+set(CMAKE_TOOLCHAIN_FILE ${EXTERNAL_ROOT}/vcpkg/scripts/buildsystems/vcpkg.cmake)
