@@ -2,5 +2,6 @@
 
 class Scene
 {
-
+public:
+private:
 };

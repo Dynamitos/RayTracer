@@ -23,11 +23,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/build)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_CURRENT_SOURCE_DIR}/build)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_CURRENT_SOURCE_DIR}/build)
 
+find_package(assimp CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(Ktx CONFIG REQUIRED)
 
 add_executable(RayTracer "")
+target_link_libraries(RayTracer PUBLIC assimp::assimp)
 target_link_libraries(RayTracer PUBLIC glfw)
 target_link_libraries(RayTracer PUBLIC glm::glm)
 target_link_libraries(RayTracer PUBLIC KTX::ktx)
