@@ -1,12 +1,9 @@
 #pragma once
+#include <memory>
 
 #define DEFINE_REF(x)                                                                                                                      \
-    typedef ::Seele::RefPtr<x> P##x;                                                                                                       \
-    typedef ::Seele::UniquePtr<x> UP##x;                                                                                                   \
-    typedef ::Seele::OwningPtr<x> O##x;
+    typedef ::std::unique_ptr<x> P##x;                                                                                                   \
 
 #define DECLARE_REF(x)                                                                                                                     \
     class x;                                                                                                                               \
-    typedef ::Seele::RefPtr<x> P##x;                                                                                                       \
-    typedef ::Seele::UniquePtr<x> UP##x;                                                                                                   \
-    typedef ::Seele::OwningPtr<x> O##x;
+    typedef ::std::unique_ptr<x> P##x;                                                                                                   \
