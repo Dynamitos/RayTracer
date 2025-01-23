@@ -4,6 +4,6 @@
 class ModelLoader
 {
 public:
-	static PModel loadModel(std::string_view filename);
+	static std::vector<PModel> loadModel(std::string_view filename);
 private:
 };
