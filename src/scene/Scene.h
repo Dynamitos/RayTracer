@@ -17,14 +17,14 @@ class Scene
     Scene();
     ~Scene();
     void render(Camera cam, RenderParameter params);
-    constexpr const std::vector<unsigned char>& getImage() const { return image; }
+    constexpr const std::vector<glm::vec3>& getImage() const { return image; }
   private:
     std::atomic_bool pendingCancel = false;
     ThreadPool threadPool;
     std::thread worker;
     // the thing being displayed
-    std::vector<unsigned char> image;
+    std::vector<glm::vec3> image;
     // radiance accumulator
-    std::vector<unsigned char> accumulator;
+    std::vector<glm::vec3> accumulator;
     BVH bvh;
 };

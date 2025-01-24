@@ -45,7 +45,7 @@ void ThreadPool::work()
         std::function<void()> job;
         {
             std::unique_lock l(queueLock);
-            if (taskQueue.front().jobs.empty())
+            if (taskQueue.empty() || taskQueue.front().jobs.empty())
             {
                 queueCV.wait(l);
                 continue;
