@@ -1,5 +1,6 @@
 target_sources(RayTracer
 	PRIVATE
+		Camera.h
 		Model.h
 		Model.cpp
 		ModelLoader.h
