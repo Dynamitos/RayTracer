@@ -2,6 +2,8 @@
 #include "scene/Scene.h"
 #include "util/ModelLoader.h"
 #include "window/Window.h"
+#include <iostream>
+#include <imgui.h>
 
 int main()
 {
@@ -19,6 +21,11 @@ int main()
         });
     while (true)
     {
+        window.beginFrame();
+        if (ImGui::Button("Test"))
+        {
+            std::cout << "Test" << std::endl;
+        }
         window.update(scene.getImage());
     }
     return 0;

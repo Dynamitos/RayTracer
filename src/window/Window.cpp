@@ -1,5 +1,8 @@
 #include "Window.h"
 #include <iostream>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 #define GLSL(...) "#version 400\n" #__VA_ARGS__
 
@@ -12,13 +15,27 @@ Window::Window(int width, int height) : width(width), height(height)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
     window = glfwCreateWindow(width, height, "RayTracer", nullptr, nullptr);
     glfwMakeContextCurrent(window);
+    
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+
+    ImGui_ImplGlfw_InitForOpenGL(window,
+                                 true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplOpenGL3_Init();
+
     glewInit();
+    
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
+    
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    
     program = glCreateProgram();
     vertShader = glCreateShader(GL_VERTEX_SHADER);
     fragShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -75,13 +92,22 @@ Window::Window(int width, int height) : width(width), height(height)
 
 Window::~Window() {}
 
-void Window::update(const std::vector<glm::vec3>& textureData)
+void Window::beginFrame()
 {
     glClear(GL_COLOR_BUFFER_BIT);
+    glfwPollEvents();
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+}
+
+void Window::update(const std::vector<glm::vec3>& textureData)
+{
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGB, GL_FLOAT, textureData.data());
     glUseProgram(program);
     glDrawArrays(GL_TRIANGLES, 0, 3);
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glfwSwapBuffers(window);
-    glfwPollEvents();
 }

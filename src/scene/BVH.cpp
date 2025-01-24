@@ -5,6 +5,10 @@
 void BVH::addModel(PModel model, glm::mat4 transform)
 {
     model->boundingBox.transform(transform);
+    for (auto& point : model->positions)
+    {
+        point = glm::vec3(transform * glm::vec4(point, 1));
+    }
     models.push_back(std::move(model));
 }
 
@@ -13,6 +17,10 @@ void BVH::addModels(std::vector<PModel> _models, glm::mat4 transform)
     for (int i = 0; i < _models.size(); ++i)
     {
         _models[i]->boundingBox.transform(transform);
+        for (auto& point : _models[i]->positions)
+        {
+            point = glm::vec3(transform * glm::vec4(point, 1));
+        }
         models.push_back(std::move(_models[i]));
     }
 }

@@ -9,6 +9,7 @@ class Window
   public:
     Window(int width, int height);
     ~Window();
+    void beginFrame();
     void update(const std::vector<glm::vec3>& textureData);
 
   private:
