@@ -8,13 +8,12 @@ class Window
   public:
     Window(int width, int height);
     ~Window();
-    void update(const std::vector<uint32_t>& textureData);
+    void update(const std::vector<unsigned char>& textureData);
 
   private:
     int width;
     int height;
     GLuint vao;
-    GLuint vbo;
     GLuint texture;
     GLuint program;
     GLuint vertShader;

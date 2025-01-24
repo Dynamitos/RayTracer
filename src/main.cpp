@@ -8,12 +8,14 @@ int main()
     bvh.addModels(ModelLoader::loadModel("../cube.fbx"), glm::mat4());
     bvh.generate();
     Window w(1920, 1080);
-    std::vector<uint32_t> texture(1920 * 1080);
+    std::vector<unsigned char> texture(1920 * 1080 * 3);
     for (int j = 10; j < 100; ++j)
     {
         for (int i = 0; i < 1920; ++i)
         {
-            texture[j * 1920 + i] = 0xff00ffff;
+            texture[(j * 1920 + i) * 3] = 0xff;
+            texture[(j * 1920 + i) * 3 + 1] = 0xff;
+            texture[(j * 1920 + i) * 3 + 2] = 0x0;
         }
     }
     while (true)
