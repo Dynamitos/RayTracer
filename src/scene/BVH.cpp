@@ -58,22 +58,38 @@ void BVH::generate()
 
 std::optional<IntersectionInfo> BVH::traceRay(Ray ray)
 {
+    auto results = generateIntersections(hierarchy, ray);
+    float closestT = std::numeric_limits<float>::max();
+    IntersectionInfo info;
+    for (uint32_t i = 0; i < results.size(); ++i)
+    {
+        if (results[i].t < closestT)
+        {
+            closestT = results[i].t;
+            info = results[i];
+        }
+    }
+    if (closestT < std::numeric_limits<float>::max())
+    {
+        return info;
+    }
+    return {};
 }
 
 std::vector<IntersectionInfo> BVH::generateIntersections(PNode& currentNode, Ray ray)
 {
-    if(!currentNode->aabb.intersects(ray))
+    if (!currentNode->aabb.intersects(ray))
     {
         return {};
     }
-    if(currentNode->model != nullptr)
+    if (currentNode->model != nullptr)
     {
         auto result = currentNode->model->intersect(ray);
-        if(result.has_value())
+        if (result.has_value())
         {
             return {*result};
         }
-        else 
+        else
         {
             return {};
         }
@@ -81,9 +97,9 @@ std::vector<IntersectionInfo> BVH::generateIntersections(PNode& currentNode, Ray
     auto leftResults = generateIntersections(currentNode->left, ray);
     auto rightResults = generateIntersections(currentNode->right, ray);
 
-    for(auto it : rightResults)
+    for (auto& it : rightResults)
     {
-        leftResults.push_back(it);
+        leftResults.push_back(std::move(it));
     }
     return leftResults;
 }
