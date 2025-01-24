@@ -4,23 +4,16 @@
 
 int main()
 {
-    BVH bvh;
-    bvh.addModels(ModelLoader::loadModel("../cube.fbx"), glm::mat4());
-    bvh.generate();
-    Window w(1920, 1080);
-    std::vector<unsigned char> texture(1920 * 1080 * 3);
-    for (int j = 100; j < 200; ++j)
-    {
-        for (int i = 0; i < 1920; ++i)
-        {
-            texture[(j * 1920 + i) * 3] = 0xff;
-            texture[(j * 1920 + i) * 3 + 1] = 0xff;
-            texture[(j * 1920 + i) * 3 + 2] = 0x0;
-        }
-    }
+    Scene scene;
+    Window window;
     while (true)
     {
-        w.update(texture);
+        // IMGUI....
+        if (Imgui.Button())
+        {
+            scene.render();
+        }
+        window.update(scene.getImage());
     }
     return 0;
 }
