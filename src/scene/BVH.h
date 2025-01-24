@@ -4,6 +4,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include "util/Ray.h"
+#include <optional>
 
 
 class BVH

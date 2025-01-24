@@ -2,6 +2,7 @@
 #include "Minimal.h"
 #include "scene/AABB.h"
 #include <vector>
+#include <optional>
 
 // material infos
 // shading parameter

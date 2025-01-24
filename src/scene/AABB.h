@@ -49,8 +49,8 @@ struct AABB
         glm::vec3 t0s = glm::vec3(min - ray.origin) * invD;
         glm::vec3 t1s = glm::vec3(max - ray.origin) * invD;
 
-        glm::vec3 tsmaller = std::min(t0s, t1s);
-        glm::vec3 tbigger = std::max(t0s, t1s);
+        glm::vec3 tsmaller = glm::min(t0s, t1s);
+        glm::vec3 tbigger = glm::max(t0s, t1s);
 
         tmin = std::max(tmin, std::max(tsmaller.x, std::max(tsmaller.y, tsmaller.z)));
         tmax = std::min(tmax, std::min(tbigger.x, std::min(tbigger.y, tbigger.z)));
