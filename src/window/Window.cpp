@@ -13,26 +13,9 @@ Window::Window(int width, int height) : width(width), height(height)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
     window = glfwCreateWindow(width, height, "RayTracer", nullptr, nullptr);
     glfwMakeContextCurrent(window);
-    float vertices[] = {
-        // positions        
-        1,  -1, 0,
-        -1, -1, 0,
-        1, 1, 0,
-        1, -1, 0
-    };
-    
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(vao);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
     assert(!glewInit());
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
@@ -40,13 +23,13 @@ Window::Window(int width, int height) : width(width), height(height)
     vertShader = glCreateShader(GL_VERTEX_SHADER);
     fragShader = glCreateShader(GL_FRAGMENT_SHADER);
     int logLen = 0;
-    const char* vertCode = GLSL(layout(location = 0) in vec3 position
-        layout(location = 0) out vec2 outUV;
-
-                                void main() {
-                                    outUV = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
-                                    gl_Position = vec4(outUV * 2.0f + -1.0f, 0.0f, 1.0f);
-                                });
+    const char* vertCode =
+        GLSL(layout(location = 0)out vec2 texcoords; // texcoords are in the normalized [0,1] range for the viewport-filling quad part of the triangle
+             void main() {
+                 vec2 vertices[3] = vec2[3](vec2(-1, -1), vec2(3, -1), vec2(-1, 3));
+                 gl_Position = vec4(vertices[gl_VertexID], 0, 1);
+                 texcoords = 0.5 * gl_Position.xy + vec2(0.5);
+             });
     const char* fragCode = GLSL(layout(location = 0) in vec2 uv; layout(location = 0) out vec4 color;
 
                                 uniform sampler2D tex;
