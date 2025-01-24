@@ -16,25 +16,23 @@ ThreadPool::~ThreadPool()
         std::unique_lock l(queueLock);
         queueCV.notify_all();
     }
-    for(auto& worker : workers)
+    for (auto& worker : workers)
     {
         worker.join();
     }
 }
 
-void ThreadPool::addJob(std::function<void()>&& job)
+void ThreadPool::runBatch(Batch&& batch)
 {
-    std::unique_lock l(queueLock);
-    taskQueue.push_back(job);
-    queueCV.notify_one();
-}
-
-void ThreadPool::waitIdle()
-{
-    while(true)
     {
         std::unique_lock l(queueLock);
-        if(taskQueue.empty())
+        taskQueue.push_back(batch);
+        queueCV.notify_one();
+    }
+    while (true)
+    {
+        std::unique_lock l(queueLock);
+        if (taskQueue.empty())
             return;
         completedCV.wait(l);
     }
@@ -42,24 +40,27 @@ void ThreadPool::waitIdle()
 
 void ThreadPool::work()
 {
-    while(running)
+    while (running)
     {
         std::function<void()> job;
         {
             std::unique_lock l(queueLock);
-            if(taskQueue.empty())
+            if (taskQueue.front().jobs.empty())
             {
                 queueCV.wait(l);
                 continue;
             }
-            job = taskQueue.front();
-            taskQueue.pop_front();
+            job = taskQueue.front().jobs.front();
+            taskQueue.front().jobs.pop_front();
         }
         job();
         {
             std::unique_lock l(queueLock);
-            completedCV.notify_one();
+            if (taskQueue.front().jobs.empty())
+            {
+                taskQueue.pop_front();
+                completedCV.notify_one();
+            }
         }
     }
 }
-

@@ -1,34 +1,40 @@
 #include "Scene.h"
 
-Scene::Scene(glm::vec3 cameraPos, glm::vec3 cameraDirection) : cameraPos(cameraPos), cameraDirection(cameraDirection) {}
+Scene::Scene() {}
 
 Scene::~Scene() {}
 
-void Scene::render(int width, int height, int numSamples)
+void Scene::render(Camera cam, RenderParameter params)
 {
+    pendingCancel = true;
+    worker.join();
+    pendingCancel = false;
     worker = std::thread(
         [&]()
         {
             image.clear();
             accumulator.clear();
-            image.resize(width * height * 3);
-            for (int samp = 0; samp < numSamples; ++samp)
+            image.resize(params.width * params.height * 3);
+            accumulator.resize(params.width * params.height * 3);
+            for (int samp = 0; samp < params.numSamples; ++samp)
             {
-                std::function<void()> job = [&]()
+                if (pendingCancel)
+                    return;
+                Batch batch;
+                for (int w = 0; w < params.width; ++w)
                 {
-                    std::vector<unsigned char> localAccumulator(width * height * 3);
-                    for (int w = 0; w < width; ++w)
+                    for (int h = 0; h < params.height; ++h)
                     {
-                        for (int h = 0; h < height; ++h)
-                        {
-                            if (cancel)
-                                return;
-                            bvh.traceRay();
-                        }
+                        batch.jobs.push_back(
+                            [&]()
+                            {
+                                Ray r = Ray();
+                                bvh.traceRay(r);
+                            });
                     }
-                    // lock image
-                    // add result to image
-                };
+                }
+                threadPool.runBatch(std::move(batch));
+                std::memcpy(image.data(), accumulator.data(), accumulator.size());
             }
         });
 }

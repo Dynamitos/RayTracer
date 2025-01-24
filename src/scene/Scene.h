@@ -2,26 +2,26 @@
 #include "BVH.h"
 #include "window/Window.h"
 #include "util/Camera.h"
+#include "ThreadPool.h"
 
-/// <summary>
-/// Ray1
-/// Ray2
-/// Ray3
-/// Ray4
-/// Ray5
-/// GammaResolve
-/// Ray1
-/// Ray2
-/// Ray3
-/// </summary>
+struct RenderParameter
+{
+    int width;
+    int height;
+    int numSamples;
+};
+
 class Scene
 {
   public:
     Scene();
     ~Scene();
-    void render(Camera cam, int width, int height, int numSamples);
+    void render(Camera cam, RenderParameter params);
     constexpr const std::vector<unsigned char>& getImage() const { return image; }
   private:
+    std::atomic_bool pendingCancel = false;
+    ThreadPool threadPool;
+    std::thread worker;
     // the thing being displayed
     std::vector<unsigned char> image;
     // radiance accumulator
