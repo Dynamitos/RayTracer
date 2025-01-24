@@ -1,5 +1,4 @@
 #include "Window.h"
-#include <assert.h>
 #include <iostream>
 
 #define GLSL(...) "#version 400\n" #__VA_ARGS__
@@ -7,18 +6,18 @@
 Window::Window(int width, int height) : width(width), height(height)
 {
     glewExperimental = true;
-    assert(glfwInit());
+    glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
     window = glfwCreateWindow(width, height, "RayTracer", nullptr, nullptr);
     glfwMakeContextCurrent(window);
-    assert(!glewInit());
+    glewInit();
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     program = glCreateProgram();
     vertShader = glCreateShader(GL_VERTEX_SHADER);
@@ -76,11 +75,11 @@ Window::Window(int width, int height) : width(width), height(height)
 
 Window::~Window() {}
 
-void Window::update(const std::vector<unsigned char>& textureData)
+void Window::update(const std::vector<glm::vec3>& textureData)
 {
     glClear(GL_COLOR_BUFFER_BIT);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, textureData.data());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGB, GL_FLOAT, textureData.data());
     glUseProgram(program);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glfwSwapBuffers(window);
