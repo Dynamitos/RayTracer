@@ -10,6 +10,7 @@ Scene::Scene()
                          glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
                          glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
                          glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
+  bvh.generate();
 }
 
 Scene::~Scene() {}
