@@ -22,6 +22,8 @@ public:
     AABB boundingBox;
 	std::vector<glm::vec3> positions;
 	std::vector<uint32_t> indices;
+        std::vector<glm::vec3> es;
+        std::vector<glm::vec3> faceNormals;
 	std::optional<IntersectionInfo> intersect(Ray ray);
 };
 DECLARE_REF(Model)

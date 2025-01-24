@@ -27,6 +27,13 @@ std::vector<PModel> ModelLoader::loadModel(std::string_view filename)
             model->indices.push_back(face.mIndices[0]);
             model->indices.push_back(face.mIndices[1]);
             model->indices.push_back(face.mIndices[2]);
+
+            auto e0 = model->positions[face.mIndices[1] - face.mIndices[0]];
+            auto e1 = model->positions[face.mIndices[2] - face.mIndices[0]];
+            model->es.push_back(e0);
+            model->es.push_back(e1);
+
+            model->faceNormals.push_back(glm::cross(e0, e1));
         }
         model->boundingBox = aabb;
         result.push_back(std::move(model));
