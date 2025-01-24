@@ -42,9 +42,11 @@ void Scene::render(Camera cam, RenderParameter params)
                             }
                         });
                 }
+                auto start = std::chrono::high_resolution_clock::now();
                 threadPool.runBatch(std::move(batch));
+                auto end = std::chrono::high_resolution_clock::now();
+                std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
                 std::memcpy(image.data(), accumulator.data(), accumulator.size() * sizeof(glm::vec3));
-                std::cout << samp << std::endl;
             }
         });
 }
