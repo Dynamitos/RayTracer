@@ -1,5 +1,6 @@
 #include "BVH.h"
-#include <list>
+#include <algorithm>
+#include <ranges>
 
 void BVH::addModel(PModel model, glm::mat4 transform)
 {
@@ -53,4 +54,36 @@ void BVH::generate()
         pendingNodes.push_back(std::move(newNode));
     }
     hierarchy = std::move(pendingNodes[0]);
+}
+
+std::optional<IntersectionInfo> BVH::traceRay(Ray ray)
+{
+}
+
+std::vector<IntersectionInfo> BVH::generateIntersections(PNode& currentNode, Ray ray)
+{
+    if(!currentNode->aabb.intersects(ray))
+    {
+        return {};
+    }
+    if(currentNode->model != nullptr)
+    {
+        auto result = currentNode->model->intersect(ray);
+        if(result.has_value())
+        {
+            return {*result};
+        }
+        else 
+        {
+            return {};
+        }
+    }
+    auto leftResults = generateIntersections(currentNode->left, ray);
+    auto rightResults = generateIntersections(currentNode->right, ray);
+
+    for(auto it : rightResults)
+    {
+        leftResults.push_back(it);
+    }
+    return leftResults;
 }

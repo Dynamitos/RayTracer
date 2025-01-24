@@ -5,9 +5,11 @@
 class Scene
 {
   public:
+    Scene();
+    ~Scene();
     void render();
   private:
     Window window;
-    std::vector<uint32_t> image;
+    std::vector<unsigned char> image;
     BVH bvh;
 };

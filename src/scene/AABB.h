@@ -2,6 +2,7 @@
 #include <array>
 #include <glm/glm.hpp>
 #include <algorithm>
+#include "util/Ray.h"
 
 struct AABB
 {
@@ -41,6 +42,11 @@ struct AABB
             min = glm::vec3(std::min(min.x, transformed.x), std::min(min.y, transformed.y), std::min(min.z, transformed.z));
             max = glm::vec3(std::max(max.x, transformed.x), std::max(max.y, transformed.y), std::max(max.z, transformed.z));
         }
+    }
+    bool intersects(Ray ray)
+    {
+        assert(false && "TODO");
+        return false;
     }
     static AABB combine(AABB lhs, AABB rhs)
     {

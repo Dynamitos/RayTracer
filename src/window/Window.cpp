@@ -18,18 +18,8 @@ Window::Window(int width, int height) : width(width), height(height)
     glBindVertexArray(vao);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    std::vector<unsigned char> texture(1920 * 1080 * 4);
-    for (int j = 0; j < 1080; ++j)
-    {
-        for (int i = 0; i < 1920; ++i)
-        {
-            texture[(j * 1920 + i) * 3] = 0xff;
-            texture[(j * 1920 + i) * 3 + 1] = 0xff;
-            texture[(j * 1920 + i) * 3 + 2] = 0x0;
-            texture[(j * 1920 + i) * 3 + 2] = 0xff;
-        }
-    }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture.data());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     program = glCreateProgram();
     vertShader = glCreateShader(GL_VERTEX_SHADER);
     fragShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -90,7 +80,7 @@ void Window::update(const std::vector<unsigned char>& textureData)
 {
     glClear(GL_COLOR_BUFFER_BIT);
     glBindTexture(GL_TEXTURE_2D, texture);
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, textureData.data());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, textureData.data());
     glUseProgram(program);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glfwSwapBuffers(window);
