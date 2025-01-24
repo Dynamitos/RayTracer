@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 #include <glm/glm.hpp>
-#include <utility>
+#include <algorithm>
 
 struct AABB
 {

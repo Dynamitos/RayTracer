@@ -5,7 +5,7 @@
 int main()
 {
     BVH bvh;
-    bvh.addModels(ModelLoader::loadModel("../../cube.fbx"), glm::mat4());
+    bvh.addModels(ModelLoader::loadModel("../cube.fbx"), glm::mat4());
     bvh.generate();
     Window w(1920, 1080);
     std::vector<uint32_t> texture(1920 * 1080);
