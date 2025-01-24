@@ -14,14 +14,14 @@ void BVH::addModel(PModel model, glm::mat4 transform)
 
 void BVH::addModels(std::vector<PModel> _models, glm::mat4 transform)
 {
-    for (int i = 0; i < _models.size(); ++i)
+    for (auto & _model : _models)
     {
-        _models[i]->boundingBox.transform(transform);
-        for (auto& point : _models[i]->positions)
+        _model->boundingBox.transform(transform);
+        for (auto& point : _model->positions)
         {
             point = glm::vec3(transform * glm::vec4(point, 1));
         }
-        models.push_back(std::move(_models[i]));
+        models.push_back(std::move(_model));
     }
 }
 

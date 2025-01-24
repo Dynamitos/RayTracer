@@ -46,13 +46,9 @@ struct AABB
     }
     bool intersects(Ray ray, float tmin, float tmax)
     {
-      std::cout << "Hello1" << std::endl;
         glm::vec3 invD = 1.0f / ray.direction;
-      std::cout << "Hello2: " << min.x << " " << min.y << " " << min.z << " " << max.x << " " << max.y << " " << max.z << " " << std::endl;
         glm::vec3 t0s = glm::vec3(min - ray.origin) * invD;
-      std::cout << "Hello3" << std::endl;
         glm::vec3 t1s = glm::vec3(max - ray.origin) * invD;
-      std::cout << "Hello4" << std::endl;
 
         glm::vec3 tsmaller = glm::min(t0s, t1s);
         glm::vec3 tbigger = glm::max(t0s, t1s);

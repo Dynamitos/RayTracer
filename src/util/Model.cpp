@@ -7,9 +7,9 @@ std::optional<IntersectionInfo> Model::intersect(const Ray ray)
 
   for(size_t posIndex=0, eIndex=0, normalIndex=0;  posIndex <indices.size(); posIndex+=3, eIndex+=2, normalIndex++)
   {
-    const auto p0 = positions[posIndex];
-    const auto p1 = positions[posIndex +1];
-    const auto p2 = positions[posIndex +2];
+    const auto p0 = positions[indices[posIndex]];
+    const auto p1 = positions[indices[posIndex+1]];
+    const auto p2 = positions[indices[posIndex+2]];
 
     const auto e0 = es[eIndex];
     const auto e1 = es[eIndex +1];

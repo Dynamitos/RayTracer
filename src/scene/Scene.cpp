@@ -46,11 +46,9 @@ void Scene::render(Camera cam, RenderParameter params)
                             {
                               Ray r = Ray{
                                 .origin = glm::vec3(0.0f),
-                                .direction = glm::vec3(0.0f, 0.0f, 1.0f)
+                                .direction = glm::normalize(glm::vec3((float)std::rand() / RAND_MAX, (float)std::rand() / RAND_MAX, (float)std::rand() / RAND_MAX))
                               };
                               bvh.traceRay(r);
-
-                              std::cout << "HELLO" << std::endl;
 
                               accumulator[w + h * params.width] +=
                                   glm::vec3(w / float(params.width * params.numSamples), h / float(params.height * params.numSamples), 0);
