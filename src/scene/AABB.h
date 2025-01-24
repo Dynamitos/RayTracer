@@ -43,10 +43,19 @@ struct AABB
             max = glm::vec3(std::max(max.x, transformed.x), std::max(max.y, transformed.y), std::max(max.z, transformed.z));
         }
     }
-    bool intersects(Ray ray)
+    bool intersects(Ray ray, float tmin, float tmax)
     {
-        assert(false && "TODO");
-        return false;
+        glm::vec3 invD = 1.0f / ray.direction;
+        glm::vec3 t0s = glm::vec3(min - ray.origin) * invD;
+        glm::vec3 t1s = glm::vec3(max - ray.origin) * invD;
+
+        glm::vec3 tsmaller = std::min(t0s, t1s);
+        glm::vec3 tbigger = std::max(t0s, t1s);
+
+        tmin = std::max(tmin, std::max(tsmaller.x, std::max(tsmaller.y, tsmaller.z)));
+        tmax = std::min(tmax, std::min(tbigger.x, std::min(tbigger.y, tbigger.z)));
+
+        return (tmin < tmax);
     }
     static AABB combine(AABB lhs, AABB rhs)
     {

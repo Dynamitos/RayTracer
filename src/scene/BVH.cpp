@@ -78,7 +78,7 @@ std::optional<IntersectionInfo> BVH::traceRay(Ray ray)
 
 std::vector<IntersectionInfo> BVH::generateIntersections(PNode& currentNode, Ray ray)
 {
-    if (!currentNode->aabb.intersects(ray))
+    if (!currentNode->aabb.intersects(ray, 0, 1))
     {
         return {};
     }
