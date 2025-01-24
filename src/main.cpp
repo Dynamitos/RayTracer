@@ -2,6 +2,7 @@
 #include "scene/Scene.h"
 #include "util/ModelLoader.h"
 #include "window/Window.h"
+#include "util/ModelLoader.h"
 
 int main()
 {
@@ -17,6 +18,7 @@ int main()
             .height = 1080,
             .numSamples = 10000,
         });
+
     while (true)
     {
         window.update(scene.getImage());

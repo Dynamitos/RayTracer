@@ -1,8 +1,16 @@
 #include "Scene.h"
+#include "util/ModelLoader.h"
 #include <iostream>
 #include <chrono>
 
-Scene::Scene() {}
+Scene::Scene()
+{
+  bvh.addModels(ModelLoader::loadModel("../cube.fbx"),
+               glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+                         glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+                         glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+                         glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
+}
 
 Scene::~Scene() {}
 
@@ -35,10 +43,16 @@ void Scene::render(Camera cam, RenderParameter params)
                         {
                             for (int h = 0; h < params.height; ++h)
                             {
-                                // Ray r = Ray();
-                                // bvh.traceRay(r);
-                                accumulator[w + h * params.width] +=
-                                    glm::vec3(w / float(params.width * params.numSamples), h / float(params.height * params.numSamples), 0);
+                              Ray r = Ray{
+                                .origin = glm::vec3(0.0f),
+                                .direction = glm::vec3(0.0f, 0.0f, 1.0f)
+                              };
+                              bvh.traceRay(r);
+
+                              std::cout << "HELLO" << std::endl;
+
+                              accumulator[w + h * params.width] +=
+                                  glm::vec3(w / float(params.width * params.numSamples), h / float(params.height * params.numSamples), 0);
                             }
                         });
                 }

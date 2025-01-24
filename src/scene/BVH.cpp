@@ -1,6 +1,7 @@
 #include "BVH.h"
 #include <algorithm>
 #include <ranges>
+#include <iostream>
 
 void BVH::addModel(PModel model, glm::mat4 transform)
 {
@@ -10,10 +11,10 @@ void BVH::addModel(PModel model, glm::mat4 transform)
 
 void BVH::addModels(std::vector<PModel> _models, glm::mat4 transform)
 {
-    for (int i = 0; i < _models.size(); ++i)
+    for (auto& _model : _models)
     {
-        _models[i]->boundingBox.transform(transform);
-        models.push_back(std::move(_models[i]));
+        _model->boundingBox.transform(transform);
+        models.push_back(std::move(_model));
     }
 }
 
@@ -60,13 +61,13 @@ std::optional<IntersectionInfo> BVH::traceRay(Ray ray)
 {
     auto results = generateIntersections(hierarchy, ray);
     float closestT = std::numeric_limits<float>::max();
-    IntersectionInfo info;
-    for (uint32_t i = 0; i < results.size(); ++i)
+    std::optional<IntersectionInfo> info = {};
+    for (auto& result : results)
     {
-        if (results[i].t < closestT)
+        if (result.t < closestT)
         {
-            closestT = results[i].t;
-            info = results[i];
+            closestT = result.t;
+            info = result;
         }
     }
     if (closestT < std::numeric_limits<float>::max())
