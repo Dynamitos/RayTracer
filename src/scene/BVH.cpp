@@ -1,20 +1,27 @@
 #include "BVH.h"
 #include <algorithm>
 #include <ranges>
-#include <iostream>
 
 void BVH::addModel(PModel model, glm::mat4 transform)
 {
     model->boundingBox.transform(transform);
+    for (auto& point : model->positions)
+    {
+        point = glm::vec3(transform * glm::vec4(point, 1));
+    }
     models.push_back(std::move(model));
 }
 
 void BVH::addModels(std::vector<PModel> _models, glm::mat4 transform)
 {
-    for (auto& _model : _models)
+    for (int i = 0; i < _models.size(); ++i)
     {
-        _model->boundingBox.transform(transform);
-        models.push_back(std::move(_model));
+        _models[i]->boundingBox.transform(transform);
+        for (auto& point : _models[i]->positions)
+        {
+            point = glm::vec3(transform * glm::vec4(point, 1));
+        }
+        models.push_back(std::move(_models[i]));
     }
 }
 
@@ -61,13 +68,13 @@ std::optional<IntersectionInfo> BVH::traceRay(Ray ray)
 {
     auto results = generateIntersections(hierarchy, ray);
     float closestT = std::numeric_limits<float>::max();
-    std::optional<IntersectionInfo> info = {};
-    for (auto& result : results)
+    IntersectionInfo info;
+    for (uint32_t i = 0; i < results.size(); ++i)
     {
-        if (result.t < closestT)
+        if (results[i].t < closestT)
         {
-            closestT = result.t;
-            info = result;
+            closestT = results[i].t;
+            info = results[i];
         }
     }
     if (closestT < std::numeric_limits<float>::max())

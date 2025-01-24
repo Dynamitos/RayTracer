@@ -2,7 +2,8 @@
 #include "scene/Scene.h"
 #include "util/ModelLoader.h"
 #include "window/Window.h"
-#include "util/ModelLoader.h"
+#include <iostream>
+#include <imgui.h>
 
 int main()
 {
@@ -18,9 +19,13 @@ int main()
             .height = 1080,
             .numSamples = 10000,
         });
-
     while (true)
     {
+        window.beginFrame();
+        if (ImGui::Button("Test"))
+        {
+            std::cout << "Test" << std::endl;
+        }
         window.update(scene.getImage());
     }
     return 0;

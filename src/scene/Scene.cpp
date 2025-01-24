@@ -29,7 +29,7 @@ void Scene::render(Camera cam, RenderParameter params)
     image.resize(params.width * params.height);
     accumulator.resize(params.width * params.height);
     worker = std::thread(
-        [&]()
+        [&, cam, params]()
         {
             for (int samp = 0; samp < params.numSamples; ++samp)
             {
