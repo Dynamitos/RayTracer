@@ -6,6 +6,13 @@
 #include <optional>
 #include <vector>
 
+struct ModelReference
+{
+  uint32_t positionOffset;
+  uint32_t indicesOffset;
+  uint32_t numIndices;
+};
+
 class BVH
 {
 public:
@@ -16,18 +23,24 @@ public:
   std::optional<IntersectionInfo> traceRay(Ray ray) const;
 
 private:
+  std::vector<glm::vec3> positionPool;
+  std::vector<glm::uvec3> indicesPool;
+  std::vector<glm::vec3> edgesPool;
+  std::vector<glm::vec3> faceNormalsPool;
+
   DECLARE_REF(Node)
   struct Node
   {
     PNode left;
     PNode right;
     AABB aabb;
-    PModel model;
+    ModelReference model;
     Node(AABB aabb) : aabb(aabb) {}
-    Node(PModel model) : aabb(model->boundingBox), model(std::move(model)) {}
+    Node(AABB aabb, ModelReference model) : aabb(aabb), model(model) {}
   };
   PNode hierarchy;
   std::vector<PModel> models;
 
   std::vector<IntersectionInfo> generateIntersections(const PNode& currentNode, Ray ray) const;
+  std::optional<IntersectionInfo> intersectModel(ModelReference reference, Ray ray) const;
 };

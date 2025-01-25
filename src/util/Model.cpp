@@ -9,64 +9,13 @@ void Model::transform(glm::mat4 matrix)
 
   boundingBox.transform(matrix);
 
-  for (int i = 0; i < indices.size(); i+=3)
+  for (int i = 0; i < indices.size(); i++)
   {
-    auto e0 = positions[indices[i + 1]] - positions[indices[i + 0]];
-    auto e1 = positions[indices[i + 2]] - positions[indices[i + 0]];
+    auto e0 = positions[indices[i].y] - positions[indices[i].x];
+    auto e1 = positions[indices[i].z] - positions[indices[i].x];
     edges.push_back(e0);
     edges.push_back(e1);
 
     faceNormals.push_back(glm::cross(e0, e1));
   }
 }
-
-std::optional<IntersectionInfo> Model::intersect(const Ray ray) const
-{
-  std::optional<IntersectionInfo> intersection = {};
-  float distance = 0;
-
-  for(size_t posIndex=0, edgeIndex=0, normalIndex=0;  posIndex <indices.size(); posIndex+=3, edgeIndex+=2, normalIndex++)
-  {
-    const auto p0 = positions[indices[posIndex]];
-    const auto p1 = positions[indices[posIndex+1]];
-    const auto p2 = positions[indices[posIndex+2]];
-
-    const auto e0 = edges[edgeIndex];
-    const auto e1 = edges[edgeIndex+1];
-
-    const auto n = faceNormals[normalIndex];
-
-    const auto s = ray.origin - p0;
-    const auto s1 = glm::cross(ray.direction, e1);
-    const auto s2 = glm::cross(s, e0);
-
-    const float fraction = 1.0f / glm::dot(s1, e0);
-    const auto resultVector = glm::vec3(glm::dot(s2, e1), glm::dot(s1, s), glm::dot(s2, ray.direction)) * fraction;
-
-    const float b3 = 1.0f - resultVector.y - resultVector.z;
-
-    if(b3 < 0 || b3 > 1)
-      continue;
-    if(resultVector.y < 0 || resultVector.y > 1)
-      continue;
-    if(resultVector.z < 0 || resultVector.z > 1)
-      continue;
-
-    if(resultVector.x < 1e-6)
-      continue;
-
-    if(!intersection.has_value() || resultVector.x < distance)
-    {
-      intersection = IntersectionInfo {
-        .position = ray.origin + ray.direction * resultVector.x,
-        .normal = n,
-        .albedo = glm::vec3(0.7f, 0.7f, 0.7f),
-        .emissive = glm::vec3(0.0f, 0.0f, 0.0f)
-      };
-      distance = resultVector.x;
-    }
-  }
-
-  return intersection;
-}
-
