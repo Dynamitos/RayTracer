@@ -35,6 +35,7 @@ class Scene
     virtual void render(Camera cam, RenderParameter params);
     ThreadPool threadPool;
     std::thread worker;
+    std::atomic_bool pendingCancel = false;
     // the thing being displayed
     std::vector<glm::vec3> image;
     // radiance accumulator

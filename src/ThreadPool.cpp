@@ -27,7 +27,6 @@ void ThreadPool::cancel()
   {
     std::unique_lock l(queueLock);
     numRemaining = numRunning;
-    taskQueue.clear();
   }
   while (true)
   {
@@ -79,7 +78,7 @@ void ThreadPool::work()
       if (numRemaining == 0)
       {
         taskQueue.pop_front();
-        completedCV.notify_one();
+        completedCV.notify_all();
       }
     }
   }

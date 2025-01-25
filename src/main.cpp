@@ -22,9 +22,18 @@ int main()
     while (true)
     {
         window.beginFrame();
-        if (ImGui::Button("Test"))
+        if (ImGui::Button("Render"))
         {
-            std::cout << "Test" << std::endl;
+          scene.startRender(
+              Camera{
+                  .position = glm::vec3(0, 10, 10),
+                  .direction = glm::vec3(0, -1, -1),
+              },
+              RenderParameter{
+                  .width = 1920,
+                  .height = 1080,
+                  .numSamples = 10000,
+              });
         }
         window.update(scene.getImage());
     }

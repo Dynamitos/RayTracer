@@ -18,6 +18,10 @@ static bool firstTime = true;
 void Scene::startRender(Camera cam, RenderParameter params)
 {
   threadPool.cancel();
+  pendingCancel = true;
+  if (worker.joinable())
+    worker.join();
+  pendingCancel = false;
   image.clear();
   accumulator.clear();
   image.resize(params.width * params.height);
@@ -36,6 +40,8 @@ void Scene::render(Camera camera, RenderParameter params)
 {
   for (int samp = 0; samp < params.numSamples; ++samp)
   {
+    if (pendingCancel)
+      return;
     Batch batch;
     for (int w = 0; w < params.width; ++w)
     {
