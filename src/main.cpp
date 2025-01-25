@@ -8,15 +8,15 @@
 int main()
 {
     Scene scene;
-    Window window(1920, 1080);
+    Window window(800, 600);
     scene.render(
         Camera{
             .position = glm::vec3(10, 0, 0),
             .direction = glm::vec3(-1, 0, 0),
         },
         RenderParameter{
-            .width = 1920,
-            .height = 1080,
+            .width = 800,
+            .height = 600,
             .numSamples = 10000,
         });
     while (true)
