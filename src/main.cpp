@@ -1,5 +1,4 @@
-#include "scene/BVH.h"
-#include "scene/Scene.h"
+#include "scene/Renderer.h"
 #include "util/ModelLoader.h"
 #include "window/Window.h"
 #include <iostream>
@@ -7,7 +6,7 @@
 
 int main()
 {
-    Scene scene;
+    Renderer scene;
     Window window(1920, 1080);
     scene.startRender(
         Camera{

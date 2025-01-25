@@ -1,8 +1,8 @@
-#include "Renderer.h"
+#include "GPURenderer.h"
 #include <slang-com-ptr.h>
 #include <slang.h>
 
-Renderer::Renderer()
+GPURenderer::GPURenderer()
     : instance(nullptr), physicalDevice(nullptr), device(nullptr), queue(nullptr), cmdPool(nullptr), cmdBuffers(nullptr),
       descriptorLayout(nullptr), descriptorSet(nullptr), descriptorPool(nullptr), pipelineLayout(nullptr), rayGen(nullptr),
       closestHit(nullptr), miss(nullptr), pipeline(nullptr)
@@ -10,9 +10,9 @@ Renderer::Renderer()
 {
 }
 
-Renderer::~Renderer() {}
+GPURenderer::~GPURenderer() {}
 
-void Renderer::createDevice()
+void GPURenderer::createDevice()
 {
   vk::ApplicationInfo appInfo("RayTracer", 1, "RayTracer", 1, VK_API_VERSION_1_3);
   vk::InstanceCreateInfo instanceCreateInfo({}, &appInfo);
@@ -45,7 +45,7 @@ void Renderer::createDevice()
   device = Device(physicalDevice, deviceCreateInfo);
 }
 
-void Renderer::createCommands()
+void GPURenderer::createCommands()
 {
   vk::CommandPoolCreateInfo commandPoolCreateInfo({}, computeQueueFamily);
   cmdPool = CommandPool(device, commandPoolCreateInfo);
@@ -55,7 +55,7 @@ void Renderer::createCommands()
   cmdBuffers = vk::raii::CommandBuffers(device, commandBufferAllocateInfo);
 }
 
-void Renderer::createDescriptors()
+void GPURenderer::createDescriptors()
 {
   vk::DescriptorSetLayoutBinding descriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
   vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo({}, descriptorSetLayoutBinding);
@@ -68,7 +68,7 @@ void Renderer::createDescriptors()
 
 using namespace slang;
 
-void Renderer::createShaders()
+void GPURenderer::createShaders()
 {
   /*
   Slang::ComPtr<IGlobalSession> globalSession;
@@ -108,4 +108,4 @@ void Renderer::createShaders()
   */
 }
 
-void Renderer::render(Camera cam, RenderParameter param) {}
+void GPURenderer::render(Camera cam, RenderParameter param) {}

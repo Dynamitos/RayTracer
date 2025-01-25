@@ -1,14 +1,16 @@
 #pragma once
-#include "BVH.h"
-#include "window/Window.h"
-#include "util/Camera.h"
-#include "ThreadPool.h"
+#include "AABB.h"
+#include "util/Model.h"
+#include "util/Ray.h"
+#include <glm/glm.hpp>
+#include <optional>
+#include <vector>
 
-struct RenderParameter
+struct ModelReference
 {
-    int width;
-    int height;
-    int numSamples;
+  uint32_t positionOffset = 0;
+  uint32_t indicesOffset = 0;
+  uint32_t numIndices = 0;
 };
 
 struct PointLight
@@ -26,21 +28,38 @@ struct DirectionalLight
 
 class Scene
 {
-  public:
-    Scene();
-    virtual ~Scene();
-    void startRender(Camera cam, RenderParameter params);
-    constexpr const std::vector<glm::vec3>& getImage() const { return image; }
-  private:
-    virtual void render(Camera cam, RenderParameter params);
-    ThreadPool threadPool;
-    std::thread worker;
-    std::atomic_bool pendingCancel = false;
-    // the thing being displayed
-    std::vector<glm::vec3> image;
-    // radiance accumulator
-    std::vector<glm::vec3> accumulator;
-    std::vector<PointLight> pointLights;
-    std::vector<DirectionalLight> directionalLights;
-    BVH bvh;
+public:
+  void addPointLight(PointLight point) { points.push_back(point); }
+  void addDirectionalLight(DirectionalLight dir) { directionalLights.push_back(dir); }
+  void addModel(PModel model, glm::mat4 transform);
+  void addModels(std::vector<PModel> models, glm::mat4 transform);
+  void generate();
+
+  std::optional<IntersectionInfo> traceRay(Ray ray) const;
+
+private:
+  std::vector<glm::vec3> positionPool;
+  std::vector<glm::vec2> texCoordsPool;
+  std::vector<glm::uvec3> indicesPool;
+  std::vector<glm::vec3> edgesPool;
+  std::vector<glm::vec3> faceNormalsPool;
+
+  std::vector<PointLight> points;
+  std::vector<DirectionalLight> directionalLights;
+
+  DECLARE_REF(Node)
+  struct Node
+  {
+    PNode left;
+    PNode right;
+    AABB aabb;
+    ModelReference model;
+    Node(AABB aabb) : aabb(aabb) {}
+    Node(AABB aabb, ModelReference model) : aabb(aabb), model(model) {}
+  };
+  PNode hierarchy;
+  std::vector<PModel> models;
+
+  std::vector<IntersectionInfo> generateIntersections(const PNode& currentNode, Ray ray) const;
+  std::optional<IntersectionInfo> intersectModel(const ModelReference& reference, Ray ray) const;
 };

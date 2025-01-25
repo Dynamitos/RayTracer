@@ -1,15 +1,15 @@
 #pragma once
-#include "scene/Scene.h"
+#include "scene/Renderer.h"
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
 using namespace vk::raii;
 
-struct Renderer : public Scene
+struct GPURenderer : public Renderer
 {
 public:
-  Renderer();
-  virtual ~Renderer();
+  GPURenderer();
+  virtual ~GPURenderer();
 
 private:
   void createDevice();
