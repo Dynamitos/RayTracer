@@ -70,6 +70,7 @@ using namespace slang;
 
 void Renderer::createShaders()
 {
+  /*
   Slang::ComPtr<IGlobalSession> globalSession;
   SlangGlobalSessionDesc desc = {};
   createGlobalSession(&desc, globalSession.writeRef());
@@ -82,7 +83,7 @@ void Renderer::createShaders()
   const char* searchPaths[] = {"res/shaders/"};
   sessionDesc.searchPaths = searchPaths;
   sessionDesc.searchPathCount = 1;
-  /* ... fill in `sessionDesc` ... */
+  /* ... fill in `sessionDesc` ...
   Slang::ComPtr<ISession> session;
   globalSession->createSession(sessionDesc, session.writeRef());
 
@@ -104,6 +105,7 @@ void Renderer::createShaders()
   int targetIndex = 0;     // only one target
   Slang::ComPtr<IBlob> kernelBlob;
   linkedProgram->getEntryPointCode(entryPointIndex, targetIndex, kernelBlob.writeRef(), diagnostics.writeRef());
+  */
 }
 
 void Renderer::render(Camera cam, RenderParameter param) {}

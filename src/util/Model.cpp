@@ -13,8 +13,8 @@ void Model::transform(glm::mat4 matrix)
   {
     auto e0 = positions[indices[i + 1]] - positions[indices[i + 0]];
     auto e1 = positions[indices[i + 2]] - positions[indices[i + 0]];
-    es.push_back(e0);
-    es.push_back(e1);
+    edges.push_back(e0);
+    edges.push_back(e1);
 
     faceNormals.push_back(glm::cross(e0, e1));
   }
@@ -25,14 +25,14 @@ std::optional<IntersectionInfo> Model::intersect(const Ray ray) const
   std::optional<IntersectionInfo> intersection = {};
   float distance = 0;
 
-  for(size_t posIndex=0, eIndex=0, normalIndex=0;  posIndex <indices.size(); posIndex+=3, eIndex+=2, normalIndex++)
+  for(size_t posIndex=0, edgeIndex=0, normalIndex=0;  posIndex <indices.size(); posIndex+=3, edgeIndex+=2, normalIndex++)
   {
     const auto p0 = positions[indices[posIndex]];
     const auto p1 = positions[indices[posIndex+1]];
     const auto p2 = positions[indices[posIndex+2]];
 
-    const auto e0 = es[eIndex];
-    const auto e1 = es[eIndex +1];
+    const auto e0 = edges[edgeIndex];
+    const auto e1 = edges[edgeIndex+1];
 
     const auto n = faceNormals[normalIndex];
 
@@ -43,7 +43,7 @@ std::optional<IntersectionInfo> Model::intersect(const Ray ray) const
     const float fraction = 1.0f / glm::dot(s1, e0);
     const auto resultVector = glm::vec3(glm::dot(s2, e1), glm::dot(s1, s), glm::dot(s2, ray.direction)) * fraction;
 
-    const double b3 = 1 - resultVector.y - resultVector.z;
+    const float b3 = 1.0f - resultVector.y - resultVector.z;
 
     if(b3 < 0 || b3 > 1)
       continue;
@@ -52,8 +52,6 @@ std::optional<IntersectionInfo> Model::intersect(const Ray ray) const
     if(resultVector.z < 0 || resultVector.z > 1)
       continue;
 
-    if(std::abs(1.0f - (resultVector.y + resultVector.z + b3)) > 1e-7)
-      continue;
     if(resultVector.x < 1e-6)
       continue;
 

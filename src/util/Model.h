@@ -22,7 +22,7 @@ public:
   AABB boundingBox;
   std::vector<glm::vec3> positions;
   std::vector<uint32_t> indices;
-  std::vector<glm::vec3> es;
+  std::vector<glm::vec3> edges;
   std::vector<glm::vec3> faceNormals;
   void transform(glm::mat4 matrix);
   std::optional<IntersectionInfo> intersect(Ray ray) const;
