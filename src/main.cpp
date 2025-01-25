@@ -11,8 +11,8 @@ int main()
     Window window(1920, 1080);
     scene.startRender(
         Camera{
-            .position = glm::vec3(10, 0, 0),
-            .direction = glm::vec3(-1, 0, 0),
+            .position = glm::vec3(0, 0, 10),
+            .direction = glm::vec3(0, 0, -1),
         },
         RenderParameter{
             .width = 1920,
