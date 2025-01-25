@@ -49,7 +49,7 @@ void Scene::render(Camera camera, RenderParameter params)
             std::uniform_real_distribution<float> rnd02(0.0, 2.0);
             for (int h = 0; h < params.height; ++h)
             {
-              Ray cam = Ray(camera.position, camera.direction);
+              Ray cam = Ray(camera.position, glm::normalize(camera.direction));
               glm::vec3 cx =
                             glm::normalize(glm::cross(cam.direction, abs(cam.direction.y) < 0.9 ? glm::vec3(0, 1, 0) : glm::vec3(0, 0, 1))),
                         cy = glm::cross(cx, cam.direction);
