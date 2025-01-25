@@ -3,8 +3,10 @@ target_sources(RayTracer
 		main.cpp
 		Minimal.h
 		ThreadPool.h
-		ThreadPool.cpp)
+		ThreadPool.cpp
+)
 
+add_subdirectory(gpu/)
 add_subdirectory(scene/)
 add_subdirectory(window/)
 add_subdirectory(util/)

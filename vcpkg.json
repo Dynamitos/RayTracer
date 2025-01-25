@@ -4,12 +4,12 @@
       "name": "imgui",
       "features": [ "glfw-binding", "opengl3-binding" ]
     },
+    "vulkan",
     "assimp",
     "ktx",
     "glfw3",
     "glew",
     "glm",
-    "stb",
     "fmt"
   ]
 }

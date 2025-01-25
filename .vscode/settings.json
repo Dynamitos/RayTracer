@@ -1,4 +1,0 @@
-{
-    "cmake.buildDirectory": "${workspaceFolder}/bin/",
-    "cmake.generator": ""
-}

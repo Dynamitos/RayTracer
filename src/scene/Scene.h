@@ -15,10 +15,11 @@ class Scene
 {
   public:
     Scene();
-    ~Scene();
-    void render(Camera cam, RenderParameter params);
+    virtual ~Scene();
+    void startRender(Camera cam, RenderParameter params);
     constexpr const std::vector<glm::vec3>& getImage() const { return image; }
   private:
+    virtual void render(Camera cam, RenderParameter params);
     std::atomic_bool pendingCancel = false;
     ThreadPool threadPool;
     std::thread worker;

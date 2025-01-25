@@ -9,7 +9,7 @@ int main()
 {
     Scene scene;
     Window window(1920, 1080);
-    scene.render(
+    scene.startRender(
         Camera{
             .position = glm::vec3(10, 0, 0),
             .direction = glm::vec3(-1, 0, 0),
