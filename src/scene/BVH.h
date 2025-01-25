@@ -8,9 +8,9 @@
 
 struct ModelReference
 {
-  uint32_t positionOffset;
-  uint32_t indicesOffset;
-  uint32_t numIndices;
+  uint32_t positionOffset = 0;
+  uint32_t indicesOffset = 0;
+  uint32_t numIndices = 0;
 };
 
 class BVH
@@ -24,6 +24,7 @@ public:
 
 private:
   std::vector<glm::vec3> positionPool;
+  std::vector<glm::vec2> texCoordsPool;
   std::vector<glm::uvec3> indicesPool;
   std::vector<glm::vec3> edgesPool;
   std::vector<glm::vec3> faceNormalsPool;
@@ -42,5 +43,5 @@ private:
   std::vector<PModel> models;
 
   std::vector<IntersectionInfo> generateIntersections(const PNode& currentNode, Ray ray) const;
-  std::optional<IntersectionInfo> intersectModel(ModelReference reference, Ray ray) const;
+  std::optional<IntersectionInfo> intersectModel(const ModelReference& reference, Ray ray) const;
 };

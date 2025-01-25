@@ -21,6 +21,7 @@ class Model
 public:
   AABB boundingBox;
   std::vector<glm::vec3> positions;
+  std::vector<glm::vec2> texCoords;
   std::vector<glm::uvec3> indices;
   std::vector<glm::vec3> edges;
   std::vector<glm::vec3> faceNormals;

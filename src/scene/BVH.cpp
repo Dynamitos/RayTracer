@@ -31,6 +31,7 @@ void BVH::generate()
     for (uint32_t i = 0; i < model->positions.size(); ++i)
     {
       positionPool.push_back(model->positions[i]);
+      texCoordsPool.push_back(model->texCoords[i]);
     }
     for (uint32_t i = 0; i < model->indices.size(); ++i)
     {
@@ -120,7 +121,7 @@ std::vector<IntersectionInfo> BVH::generateIntersections(const PNode& currentNod
   return leftResults;
 }
 
-std::optional<IntersectionInfo> BVH::intersectModel(ModelReference reference, const Ray ray) const
+std::optional<IntersectionInfo> BVH::intersectModel(const ModelReference& reference, const Ray ray) const
 {
   std::optional<IntersectionInfo> intersection = {};
   float distance = 0;
