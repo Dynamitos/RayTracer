@@ -6,6 +6,10 @@
 
 Renderer::Renderer()
 {
+  bvh.addPointLight(PointLight{
+      .position = glm::vec3(2, 0, 2),
+      .color = glm::vec3(0, 1, 0),
+  });
   bvh.addModels(ModelLoader::loadModel("../res/models/cube.fbx"),
                 glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
                           glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));

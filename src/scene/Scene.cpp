@@ -161,7 +161,7 @@ std::optional<IntersectionInfo> Scene::intersectModel(const ModelReference& refe
       intersection = IntersectionInfo{.position = ray.origin + ray.direction * resultVector.x,
                                       .normal = n,
                                       .albedo = glm::vec3(0.7f, 0.7f, 0.7f),
-                                      .emissive = glm::vec3(0.0f, 0.0f, 0.0f)};
+                                      .emissive = glm::vec3(0.0f, 0.0f, 0.0f),};
       distance = resultVector.x;
     }
   }
