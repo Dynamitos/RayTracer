@@ -6,6 +6,14 @@ Renderer::Renderer()
       closestHit(nullptr), miss(nullptr), pipeline(nullptr)
 
 {
+  
+
+  vk::RayTracingPipelineCreateInfoKHR pipelineCreateInfo(0, );
+}
+
+Renderer::~Renderer() {}
+
+void Renderer::createDevice() {
   vk::ApplicationInfo appInfo("RayTracer", 1, "RayTracer", 1, VK_API_VERSION_1_3);
   vk::InstanceCreateInfo instanceCreateInfo({}, &appInfo);
   instance = Instance(context, instanceCreateInfo);
@@ -35,14 +43,19 @@ Renderer::Renderer()
   vk::DeviceQueueCreateInfo deviceQueueCreateInfo({}, computeQueueFamily, 1, &queuePriority);
   vk::DeviceCreateInfo deviceCreateInfo({}, deviceQueueCreateInfo);
   device = Device(physicalDevice, deviceCreateInfo);
+}
 
+void Renderer::createCommands()
+{
   vk::CommandPoolCreateInfo commandPoolCreateInfo({}, computeQueueFamily);
   cmdPool = CommandPool(device, commandPoolCreateInfo);
 
   // allocate a CommandBuffer from the CommandPool
   vk::CommandBufferAllocateInfo commandBufferAllocateInfo(cmdPool, vk::CommandBufferLevel::ePrimary, 10);
   cmdBuffers = vk::raii::CommandBuffers(device, commandBufferAllocateInfo);
-  
+}
+
+void Renderer::createDescriptors() {
   vk::DescriptorSetLayoutBinding descriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
   vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo({}, descriptorSetLayoutBinding);
   descriptorLayout = DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
@@ -52,6 +65,8 @@ Renderer::Renderer()
   pipelineLayout = PipelineLayout(device, pipelineLayoutCreateInfo);
 }
 
-Renderer::~Renderer() {}
+void Renderer::createShaders() {
+    
+}
 
 void Renderer::render(Camera cam, RenderParameter param) {}

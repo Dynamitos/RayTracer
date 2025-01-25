@@ -12,12 +12,18 @@ public:
   virtual ~Renderer();
 
 private:
+  void createDevice();
+  void createCommands();
+  void createDescriptors();
+  void createShaders();
+
   Context context;
   Instance instance;
   PhysicalDevice physicalDevice;
   Device device;
   Queue queue;
 
+  uint32_t computeQueueFamily;
   CommandPool cmdPool;
   CommandBuffers cmdBuffers;
 
