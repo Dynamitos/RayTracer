@@ -5,8 +5,9 @@
 
 Scene::Scene()
 {
-  bvh.addModels(ModelLoader::loadModel("../res/models/cube.fbx"), glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-                                                                 glm::vec4(0.0f, 0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
+  bvh.addModels(ModelLoader::loadModel("../res/models/cube.fbx"),
+                glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+                          glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
   bvh.generate();
 }
 
@@ -39,7 +40,7 @@ void Scene::render(Camera cam, RenderParameter params)
     for (int w = 0; w < params.width; ++w)
     {
       batch.jobs.push_back(
-          [&, w]()
+          [&](int w) -> Task
           {
             for (int h = 0; h < params.height; ++h)
             {
@@ -51,7 +52,8 @@ void Scene::render(Camera cam, RenderParameter params)
               accumulator[w + h * params.width] +=
                   glm::vec3(w / float(params.width * params.numSamples), h / float(params.height * params.numSamples), 0);
             }
-          });
+            co_return;
+          }(w));
     }
     auto start = std::chrono::high_resolution_clock::now();
     threadPool.runBatch(std::move(batch));
