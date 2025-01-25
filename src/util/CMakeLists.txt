@@ -6,4 +6,8 @@ target_sources(RayTracer
 		ModelLoader.h
 		ModelLoader.cpp
 		Ray.h
+		Texture.h
+		Texture.cpp
+		TextureLoader.h
+		TextureLoader.cpp
 )

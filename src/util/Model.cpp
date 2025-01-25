@@ -1,6 +1,26 @@
 #include "Model.h"
 
-std::optional<IntersectionInfo> Model::intersect(const Ray ray)
+void Model::transform(glm::mat4 matrix)
+{
+  for (auto& pos : positions)
+  {
+    pos = glm::vec3(matrix * glm::vec4(pos, 1));
+  }
+
+  boundingBox.transform(matrix);
+
+  for (int i = 0; i < indices.size(); i+=3)
+  {
+    auto e0 = positions[indices[i + 1]] - positions[indices[i + 0]];
+    auto e1 = positions[indices[i + 2]] - positions[indices[i + 0]];
+    es.push_back(e0);
+    es.push_back(e1);
+
+    faceNormals.push_back(glm::cross(e0, e1));
+  }
+}
+
+std::optional<IntersectionInfo> Model::intersect(const Ray ray) const
 {
   std::optional<IntersectionInfo> intersection = {};
   float distance = 0;
@@ -51,3 +71,4 @@ std::optional<IntersectionInfo> Model::intersect(const Ray ray)
 
   return intersection;
 }
+

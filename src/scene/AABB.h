@@ -44,7 +44,7 @@ struct AABB
             max = glm::vec3(std::max(max.x, transformed.x), std::max(max.y, transformed.y), std::max(max.z, transformed.z));
         }
     }
-    bool intersects(Ray ray, float tmin, float tmax)
+    bool intersects(Ray ray, float tmin, float tmax) const
     {
         glm::vec3 invD = 1.0f / ray.direction;
         glm::vec3 t0s = glm::vec3(min - ray.origin) * invD;

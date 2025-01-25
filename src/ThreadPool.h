@@ -15,6 +15,9 @@ class ThreadPool
 public:
     ThreadPool(uint32_t numWorkers = std::thread::hardware_concurrency());
     ~ThreadPool();
+    
+    // cancel running jobs
+    void cancel();
     void runBatch(Batch&& batch);
 private:
     std::atomic_bool running = true;
@@ -23,6 +26,7 @@ private:
     std::condition_variable queueCV;
     std::condition_variable completedCV;
     uint32_t numRemaining;
+    uint32_t numRunning;
     std::list<Batch> taskQueue;
     std::vector<std::thread> workers;
 };

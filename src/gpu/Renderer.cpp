@@ -1,4 +1,6 @@
 #include "Renderer.h"
+#include <slang-com-ptr.h>
+#include <slang.h>
 
 Renderer::Renderer()
     : instance(nullptr), physicalDevice(nullptr), device(nullptr), queue(nullptr), cmdPool(nullptr), cmdBuffers(nullptr),
@@ -10,7 +12,8 @@ Renderer::Renderer()
 
 Renderer::~Renderer() {}
 
-void Renderer::createDevice() {
+void Renderer::createDevice()
+{
   vk::ApplicationInfo appInfo("RayTracer", 1, "RayTracer", 1, VK_API_VERSION_1_3);
   vk::InstanceCreateInfo instanceCreateInfo({}, &appInfo);
   instance = Instance(context, instanceCreateInfo);
@@ -52,7 +55,8 @@ void Renderer::createCommands()
   cmdBuffers = vk::raii::CommandBuffers(device, commandBufferAllocateInfo);
 }
 
-void Renderer::createDescriptors() {
+void Renderer::createDescriptors()
+{
   vk::DescriptorSetLayoutBinding descriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
   vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo({}, descriptorSetLayoutBinding);
   descriptorLayout = DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
@@ -62,8 +66,44 @@ void Renderer::createDescriptors() {
   pipelineLayout = PipelineLayout(device, pipelineLayoutCreateInfo);
 }
 
-void Renderer::createShaders() {
-    
+using namespace slang;
+
+void Renderer::createShaders()
+{
+  Slang::ComPtr<IGlobalSession> globalSession;
+  SlangGlobalSessionDesc desc = {};
+  createGlobalSession(&desc, globalSession.writeRef());
+  SessionDesc sessionDesc;
+  TargetDesc targetDesc;
+  targetDesc.format = SLANG_SPIRV;
+  targetDesc.profile = globalSession->findProfile("glsl_450");
+  sessionDesc.targets = &targetDesc;
+  sessionDesc.targetCount = 1;
+  const char* searchPaths[] = {"res/shaders/"};
+  sessionDesc.searchPaths = searchPaths;
+  sessionDesc.searchPathCount = 1;
+  /* ... fill in `sessionDesc` ... */
+  Slang::ComPtr<ISession> session;
+  globalSession->createSession(sessionDesc, session.writeRef());
+
+  Slang::ComPtr<IBlob> diagnostics;
+  IModule* module = session->loadModule("MyShaders", diagnostics.writeRef());
+  if (diagnostics)
+  {
+    std::cout << (const char*)diagnostics->getBufferPointer() << std::endl;
+  }
+  Slang::ComPtr<IEntryPoint> computeEntryPoint;
+  module->findEntryPointByName("myComputeMain", computeEntryPoint.writeRef());
+  IComponentType* components[] = {module, computeEntryPoint};
+  Slang::ComPtr<IComponentType> program;
+  session->createCompositeComponentType(components, 2, program.writeRef());
+  Slang::ComPtr<IComponentType> linkedProgram;
+  Slang::ComPtr<ISlangBlob> diagnosticBlob;
+  program->link(linkedProgram.writeRef(), diagnosticBlob.writeRef());
+  int entryPointIndex = 0; // only one entry point
+  int targetIndex = 0;     // only one target
+  Slang::ComPtr<IBlob> kernelBlob;
+  linkedProgram->getEntryPointCode(entryPointIndex, targetIndex, kernelBlob.writeRef(), diagnostics.writeRef());
 }
 
 void Renderer::render(Camera cam, RenderParameter param) {}

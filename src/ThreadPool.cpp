@@ -22,6 +22,22 @@ ThreadPool::~ThreadPool()
   }
 }
 
+void ThreadPool::cancel()
+{
+  {
+    std::unique_lock l(queueLock);
+    numRemaining = numRunning;
+    taskQueue.clear();
+  }
+  while (true)
+  {
+    std::unique_lock l(queueLock);
+    if (taskQueue.empty())
+      return;
+    completedCV.wait(l);
+  }
+}
+
 void ThreadPool::runBatch(Batch&& batch)
 {
   {
@@ -53,11 +69,13 @@ void ThreadPool::work()
       }
       job = taskQueue.front().jobs.front();
       taskQueue.front().jobs.pop_front();
+      numRunning++;
     }
     job.handle();
     {
       std::unique_lock l(queueLock);
       numRemaining--;
+      numRunning--;
       if (numRemaining == 0)
       {
         taskQueue.pop_front();

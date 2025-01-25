@@ -17,13 +17,7 @@ Scene::~Scene() {}
 static bool firstTime = true;
 void Scene::startRender(Camera cam, RenderParameter params)
 {
-  if (!firstTime)
-  {
-    pendingCancel = true;
-    worker.join();
-    firstTime = false;
-  }
-  pendingCancel = false;
+  threadPool.cancel();
   image.clear();
   accumulator.clear();
   image.resize(params.width * params.height);
@@ -31,22 +25,23 @@ void Scene::startRender(Camera cam, RenderParameter params)
   worker = std::thread(&Scene::render, this, cam, params);
 }
 
+glm::vec3 rand01(glm::uvec3 x)
+{ // pseudo-random number generator
+  for (int i = 3; i-- > 0;)
+    x = ((x >> 8U) ^ glm::uvec3(x.y, x.z, x.x)) * 1103515245U;
+  return glm::vec3(x) * (1.0f / float(0xffffffffU));
+}
+
 void Scene::render(Camera camera, RenderParameter params)
 {
-  std::random_device rd;
   for (int samp = 0; samp < params.numSamples; ++samp)
   {
-    if (pendingCancel)
-      return;
     Batch batch;
     for (int w = 0; w < params.width; ++w)
     {
       batch.jobs.push_back(
-          [&](int w) -> Task
+          [&](int w, int samp) -> Task
           {
-            std::mt19937 gen(rd());
-            std::uniform_real_distribution<float> rnd01(0.0, 1.0);
-            std::uniform_real_distribution<float> rnd02(0.0, 2.0);
             for (int h = 0; h < params.height; ++h)
             {
               Ray cam = Ray(camera.position, glm::normalize(camera.direction));
@@ -59,7 +54,8 @@ void Scene::render(Camera camera, RenderParameter params)
 
               //-- sample sensor
               glm::uvec2 pix = glm::uvec2(w, h);
-              glm::vec2 rnd2 = glm::vec2(rnd02(gen), rnd02(gen)); // vvv tent filter sample
+              glm::vec3 rnd1 = rand01(glm::uvec3(pix, samp));
+              glm::vec2 rnd2 = 2.0f * glm::vec2(rnd1); // vvv tent filter sample
               glm::vec2 tent =
                   glm::vec2(rnd2.x < 1 ? sqrt(rnd2.x) - 1 : 1 - sqrt(2 - rnd2.x), rnd2.y < 1 ? sqrt(rnd2.y) - 1 : 1 - sqrt(2 - rnd2.y));
               glm::vec2 s =
@@ -76,7 +72,7 @@ void Scene::render(Camera camera, RenderParameter params)
               glm::vec3 lensX = glm::cross(lensN, glm::vec3(0, 1, 0)); // the exact vector doesnt matter
               glm::vec3 lensY = glm::cross(lensN, lensX);
 
-              glm::vec3 lensSample = lensP + rnd01(gen) * camera.A * lensX + rnd01(gen) * camera.A * lensY;
+              glm::vec3 lensSample = lensP + rnd1.x * camera.A * lensX + rnd1.y * camera.A * lensY;
 
               glm::vec3 focalPoint = cam.origin + (camera.S_O + S_I) * cam.direction;
               float t = glm::dot(focalPoint - r.origin, lensN) / glm::dot(r.direction, lensN);
@@ -91,7 +87,7 @@ void Scene::render(Camera camera, RenderParameter params)
               }
             }
             co_return;
-          }(w));
+          }(w, samp));
     }
     auto start = std::chrono::high_resolution_clock::now();
     threadPool.runBatch(std::move(batch));

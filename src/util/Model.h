@@ -1,8 +1,8 @@
 #pragma once
 #include "Minimal.h"
 #include "scene/AABB.h"
-#include <vector>
 #include <optional>
+#include <vector>
 
 // material infos
 // shading parameter
@@ -19,11 +19,12 @@ struct IntersectionInfo
 class Model
 {
 public:
-    AABB boundingBox;
-	std::vector<glm::vec3> positions;
-	std::vector<uint32_t> indices;
-        std::vector<glm::vec3> es;
-        std::vector<glm::vec3> faceNormals;
-	std::optional<IntersectionInfo> intersect(Ray ray);
+  AABB boundingBox;
+  std::vector<glm::vec3> positions;
+  std::vector<uint32_t> indices;
+  std::vector<glm::vec3> es;
+  std::vector<glm::vec3> faceNormals;
+  void transform(glm::mat4 matrix);
+  std::optional<IntersectionInfo> intersect(Ray ray) const;
 };
 DECLARE_REF(Model)

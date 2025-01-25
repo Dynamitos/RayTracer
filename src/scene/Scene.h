@@ -11,6 +11,19 @@ struct RenderParameter
     int numSamples;
 };
 
+struct PointLight
+{
+  glm::vec3 position;
+  glm::vec3 color;
+  float attenuation;
+};
+
+struct DirectionalLight
+{
+  glm::vec3 direction;
+  glm::vec3 color;
+};
+
 class Scene
 {
   public:
@@ -20,12 +33,13 @@ class Scene
     constexpr const std::vector<glm::vec3>& getImage() const { return image; }
   private:
     virtual void render(Camera cam, RenderParameter params);
-    std::atomic_bool pendingCancel = false;
     ThreadPool threadPool;
     std::thread worker;
     // the thing being displayed
     std::vector<glm::vec3> image;
     // radiance accumulator
     std::vector<glm::vec3> accumulator;
+    std::vector<PointLight> pointLights;
+    std::vector<DirectionalLight> directionalLights;
     BVH bvh;
 };
