@@ -3,10 +3,11 @@
 #include <functional>
 #include <list>
 #include <thread>
+#include "Minimal.h"
 
 struct Batch
 {
-    std::list<std::function<void()>> jobs;
+    std::list<Task> jobs;
 };
 
 class ThreadPool
@@ -21,6 +22,7 @@ private:
     std::mutex queueLock;
     std::condition_variable queueCV;
     std::condition_variable completedCV;
+    uint32_t numRemaining;
     std::list<Batch> taskQueue;
     std::vector<std::thread> workers;
 };

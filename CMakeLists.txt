@@ -11,6 +11,7 @@ set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/external/vcpkg/scripts/buil
 
 project(RayTracer)
 
+find_package(Vulkan REQUIRED)
 find_package(glew CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
@@ -20,14 +21,12 @@ find_package(imgui CONFIG REQUIRED)
 
 add_executable(RayTracer "")
 target_include_directories(RayTracer PUBLIC src/)
+target_link_libraries(RayTracer PUBLIC Vulkan::Vulkan)
+target_link_libraries(RayTracer PUBLIC Vulkan::Headers)
 target_link_libraries(RayTracer PUBLIC assimp::assimp)
 target_link_libraries(RayTracer PUBLIC glfw)
 target_link_libraries(RayTracer PUBLIC imgui::imgui)
-if(APPLE)
 target_link_libraries(RayTracer PUBLIC GLEW::GLEW)
-else()
-target_link_libraries(RayTracer PUBLIC GLEW::glew)
-endif()
 target_link_libraries(RayTracer PUBLIC glm::glm)
 target_link_libraries(RayTracer PUBLIC KTX::ktx)
 
