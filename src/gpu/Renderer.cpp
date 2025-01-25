@@ -6,9 +6,6 @@ Renderer::Renderer()
       closestHit(nullptr), miss(nullptr), pipeline(nullptr)
 
 {
-  
-
-  vk::RayTracingPipelineCreateInfoKHR pipelineCreateInfo(0, );
 }
 
 Renderer::~Renderer() {}
