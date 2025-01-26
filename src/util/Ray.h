@@ -17,7 +17,7 @@ struct Ray
 
 struct HitInfo
 {
-  float t;
+  float t = std::numeric_limits<float>::max();
   glm::vec3 position;
   glm::vec3 normal;
   // not entirely sure what that does

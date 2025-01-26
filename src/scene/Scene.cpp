@@ -39,7 +39,7 @@ void Scene::generate()
       indicesPool.push_back(model->indices[i]);
       edgesPool.push_back(model->edges[i * 2 + 0]);
       edgesPool.push_back(model->edges[i * 2 + 1]);
-      faceNormalsPool.push_back(model->faceNormals[i]);
+      faceNormalsPool.push_back(glm::normalize(model->faceNormals[i]));
     }
     pendingNodes.push_back(std::make_unique<Node>(model->boundingBox, ref));
     models.pop_back();
@@ -81,18 +81,9 @@ extern glm::vec3 rnd01;
 
 void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tmax) const noexcept
 {
-  auto results = generateIntersections(hierarchy, ray, tmin, tmax);
-  float closestT = std::numeric_limits<float>::max();
-  IntersectionInfo info;
-  for (uint32_t i = 0; i < results.size(); ++i)
-  {
-    if (results[i].hitInfo.t < closestT)
-    {
-      closestT = results[i].hitInfo.t;
-      info = results[i];
-    }
-  }
-  if (closestT < std::numeric_limits<float>::max())
+  IntersectionInfo info = generateIntersections(hierarchy, ray, tmin, tmax);
+  
+  if (info.hitInfo.t < std::numeric_limits<float>::max())
   {
     // russian roulette ray termination
     float p = std::max(std::max(info.brdf.albedo.x, info.brdf.albedo.y), info.brdf.albedo.z);
@@ -118,7 +109,7 @@ void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tm
       // if there is an intersection, the light is occluded so no lighting
       if (!testIntersection(hierarchy, Ray(info.hitInfo.position, -d.direction), 1e-4, 1e20))
       {
-        payload.accumulatedRadiance += info.brdf.evaluate(info.hitInfo, -ray.direction, d.direction, d.color);
+        payload.accumulatedRadiance += info.brdf.evaluate(info.hitInfo, -ray.direction, -d.direction, d.color);
       }
     }
     for (const auto& p : pointLights)
@@ -165,7 +156,7 @@ bool Scene::testIntersection(const PNode& currentNode, const Ray ray, const floa
   return leftResults || rightResults;
 }
 
-std::vector<IntersectionInfo> Scene::generateIntersections(const PNode& currentNode, const Ray ray, const float tmin,
+IntersectionInfo Scene::generateIntersections(const PNode& currentNode, const Ray ray, const float tmin,
                                                            float tmax) const noexcept
 {
   if (!currentNode->aabb.intersects(ray, tmin, tmax))
@@ -176,14 +167,10 @@ std::vector<IntersectionInfo> Scene::generateIntersections(const PNode& currentN
   {
     return intersectModel(currentNode->model, ray, tmin, tmax);
   }
-  auto leftResults = generateIntersections(currentNode->left, ray, tmin, tmax);
-  auto rightResults = generateIntersections(currentNode->right, ray, tmin, tmax);
+  auto leftResult = generateIntersections(currentNode->left, ray, tmin, tmax);
+  auto rightResult = generateIntersections(currentNode->right, ray, tmin, tmax);
 
-  for (auto& it : rightResults)
-  {
-    leftResults.push_back(std::move(it));
-  }
-  return leftResults;
+  return leftResult.hitInfo.t < rightResult.hitInfo.t ? leftResult : rightResult;
 }
 
 bool Scene::testModel(const ModelReference& reference, const Ray ray, const float tmin, float tmax) const noexcept
@@ -234,11 +221,10 @@ bool Scene::testModel(const ModelReference& reference, const Ray ray, const floa
 
   return false;
 }
-std::vector<IntersectionInfo> Scene::intersectModel(const ModelReference& reference, const Ray ray, const float tmin,
+IntersectionInfo Scene::intersectModel(const ModelReference& reference, const Ray ray, const float tmin,
                                                     float tmax) const noexcept
 {
-  std::vector<IntersectionInfo> intersection = {};
-  float distance = 0;
+  IntersectionInfo intersection = {};
 
   for (size_t posIndex = 0, edgeIndex = 0, normalIndex = 0; posIndex < reference.numIndices; posIndex++, edgeIndex += 2, normalIndex++)
   {
@@ -280,13 +266,16 @@ std::vector<IntersectionInfo> Scene::intersectModel(const ModelReference& refere
     if (resultVector.x < tmin || resultVector.x > tmax)
       continue;
 
-    intersection.push_back(IntersectionInfo{
+    if (intersection.hitInfo.t < resultVector.x)
+      continue;
+
+    intersection = IntersectionInfo{
         .hitInfo =
             {
                 .t = resultVector.x,
                 .position = ray.origin + ray.direction * resultVector.x,
                 .normal = n,
-                .normalLight = n, // todo: flip based on something, idk what
+                .normalLight = glm::dot(n, ray.direction) < 0 ? n : -n,
                 .texCoords = texCoords,
             },
         .brdf =
@@ -294,8 +283,7 @@ std::vector<IntersectionInfo> Scene::intersectModel(const ModelReference& refere
                 .albedo = glm::vec3(texCoords, 0.0f),
                 .emissive = glm::vec3(0.0f, 0.0f, 0.0f),
             },
-    });
-    distance = resultVector.x;
+    };
   }
 
   return intersection;

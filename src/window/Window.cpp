@@ -14,6 +14,7 @@ Window::Window(int width, int height) : width(width), height(height)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
     window = glfwCreateWindow(width, height, "RayTracer", nullptr, nullptr);
+    glfwSwapInterval(1);
     glfwMakeContextCurrent(window);
     
     IMGUI_CHECKVERSION();

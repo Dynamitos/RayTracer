@@ -9,5 +9,6 @@ glm::vec3 BRDF::evaluate(HitInfo hit, glm::vec3 viewDir, glm::vec3 lightDir, glm
   glm::vec3 h = glm::normalize(lightDir + viewDir);
   float specular = pow(std::min(std::max(glm::dot(normal, h), 0.0f), 1.0f), shininess);
 
-  return (albedo * diffuse * lightColor) + (specularColor * specular);
+  return (albedo * diffuse * lightColor);
+  //+(specularColor * specular);
 }

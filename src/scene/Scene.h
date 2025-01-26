@@ -62,7 +62,7 @@ private:
 
   // tests if a ray intersects any geometry, no hit information, for shadow rays
   bool testIntersection(const PNode& currentNode, const Ray ray, const float tmin, const float tmax) const noexcept;
-  std::vector<IntersectionInfo> generateIntersections(const PNode& currentNode, const Ray ray, const float tmin, const float tmax) const noexcept;
+  IntersectionInfo generateIntersections(const PNode& currentNode, const Ray ray, const float tmin, const float tmax) const noexcept;
   bool testModel(const ModelReference& reference, const Ray ray, const float tmin, const float tmax) const noexcept;
-  std::vector<IntersectionInfo> intersectModel(const ModelReference& reference, const Ray ray, const float tmin, const float tmax) const noexcept;
+  IntersectionInfo intersectModel(const ModelReference& reference, const Ray ray, const float tmin, const float tmax) const noexcept;
 };

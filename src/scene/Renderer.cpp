@@ -7,10 +7,10 @@
 Renderer::Renderer()
 {
   bvh.addDirectionalLight(DirectionalLight{
-      .direction = glm::normalize(glm::vec3(-0.4f, -0.2f, -0.6f)),
+      .direction = glm::normalize(glm::vec3(-0.2f, -0.2f, -0.2f)),
       .color = glm::vec3(1, 1, 1),
   });
-  bvh.addModels(ModelLoader::loadModel("../res/models/box.glb"),
+  bvh.addModels(ModelLoader::loadModel("../res/models/cube.fbx"),
                 glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
                           glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
   bvh.generate();
@@ -106,7 +106,7 @@ void Renderer::render(Camera camera, RenderParameter params)
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
     for (uint32_t i = 0; i < accumulator.size(); ++i)
     {
-      image[i] = glm::pow(glm::max((accumulator[i] / float(samp)), 0.0f), glm::vec3(0.45f));
+      image[i] = glm::pow(glm::max((accumulator[i] / float(samp+1)), 0.0f), glm::vec3(0.45f));
     }
   }
 }
