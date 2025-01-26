@@ -13,7 +13,7 @@ struct Batch
 class ThreadPool
 {
 public:
-    ThreadPool(uint32_t numWorkers = std::thread::hardware_concurrency());
+    ThreadPool(uint32_t numWorkers = std::thread::hardware_concurrency() - 2);
     ~ThreadPool();
     
     // cancel running jobs

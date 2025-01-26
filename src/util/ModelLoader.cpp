@@ -9,6 +9,7 @@ std::vector<PModel> ModelLoader::loadModel(std::string_view filename)
 {
   Assimp::Importer importer;
   const aiScene* scene = importer.ReadFile(std::string(filename), aiProcess_Triangulate);
+  std::cout << importer.GetErrorString() << std::endl;
   std::vector<PModel> result;
   for (int m = 0; m < scene->mNumMeshes; ++m)
   {

@@ -10,7 +10,7 @@ Renderer::Renderer()
       .direction = glm::normalize(glm::vec3(-0.4f, -0.2f, -0.6f)),
       .color = glm::vec3(1, 1, 1),
   });
-  bvh.addModels(ModelLoader::loadModel("../res/models/cube.fbx"),
+  bvh.addModels(ModelLoader::loadModel("../res/models/box.glb"),
                 glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
                           glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
   bvh.generate();
@@ -48,12 +48,14 @@ void Renderer::render(Camera camera, RenderParameter params)
   {
     if (pendingCancel)
       return;
+    auto start = std::chrono::high_resolution_clock::now();
     Batch batch;
     for (int w = 0; w < params.width; ++w)
     {
       batch.jobs.push_back(
           [&](int w, int samp) -> Task
           {
+            // #pragma omp parallel for
             for (int h = 0; h < params.height; ++h)
             {
               Ray cam = Ray(camera.position, glm::normalize(camera.direction));
@@ -99,7 +101,6 @@ void Renderer::render(Camera camera, RenderParameter params)
             co_return;
           }(w, samp));
     }
-    auto start = std::chrono::high_resolution_clock::now();
     threadPool.runBatch(std::move(batch));
     auto end = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;

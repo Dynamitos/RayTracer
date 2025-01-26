@@ -68,8 +68,10 @@ void Scene::generate()
     PNode newNode = std::make_unique<Node>(AABB::combine(pendingNodes[lhs]->aabb, pendingNodes[rhs]->aabb));
     newNode->left = std::move(pendingNodes[lhs]);
     newNode->right = std::move(pendingNodes[rhs]);
-    pendingNodes.erase(pendingNodes.begin() + lhs);
+    assert(rhs > lhs);
+    //
     pendingNodes.erase(pendingNodes.begin() + rhs);
+    pendingNodes.erase(pendingNodes.begin() + lhs);
     pendingNodes.push_back(std::move(newNode));
   }
   hierarchy = std::move(pendingNodes[0]);
@@ -94,7 +96,12 @@ void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tm
   {
     // russian roulette ray termination
     float p = std::max(std::max(info.brdf.albedo.x, info.brdf.albedo.y), info.brdf.albedo.z);
-    if (payload.depth > 5)
+
+    if (payload.depth >= 12)
+    {
+      return;
+    }
+    else if (payload.depth > 5)
     {
       if (rnd01.z >= p)
         return;
