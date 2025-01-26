@@ -27,6 +27,7 @@ int main()
     ImGui::InputFloat3("Target", &camera.target.x);
     ImGui::InputFloat("Focal Length", &camera.f);
     ImGui::InputFloat("Aperture", &camera.A);
+    ImGui::InputFloat("S_O", &camera.S_O);
     ImGui::Text("Render Parameters");
     ImGui::InputInt2("Dimensions", &render.width);
     ImGui::InputInt("Samples", &render.numSamples);
