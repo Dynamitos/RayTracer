@@ -7,7 +7,7 @@
 Renderer::Renderer()
 {
   bvh.addDirectionalLight(DirectionalLight{
-      .direction = glm::normalize(glm::vec3(-0.2f, -0.2f, -0.2f)),
+      .direction = glm::normalize(glm::vec3(-0.4f, -0.3f, -0.2f)),
       .color = glm::vec3(1, 1, 1),
   });
   bvh.addModels(ModelLoader::loadModel("../res/models/cube.fbx"),
@@ -18,7 +18,6 @@ Renderer::Renderer()
 
 Renderer::~Renderer() {}
 
-static bool firstTime = true;
 void Renderer::startRender(Camera cam, RenderParameter params)
 {
   threadPool.cancel();
@@ -58,7 +57,7 @@ void Renderer::render(Camera camera, RenderParameter params)
             // #pragma omp parallel for
             for (int h = 0; h < params.height; ++h)
             {
-              Ray cam = Ray(camera.position, glm::normalize(camera.direction));
+              Ray cam = Ray(camera.position, glm::normalize(camera.target - camera.position));
               glm::vec3 cx =
                             glm::normalize(glm::cross(cam.direction, abs(cam.direction.y) < 0.9 ? glm::vec3(0, 1, 0) : glm::vec3(0, 0, 1))),
                         cy = glm::cross(cx, cam.direction);
@@ -77,7 +76,6 @@ void Renderer::render(Camera camera, RenderParameter params)
                    0.5f) *
                   sdim;
               glm::vec3 spos = cam.origin + cx * s.x + cy * s.y, lc = cam.origin + cam.direction * 0.035f; // sample on 3d sensor plane
-              glm::vec3 accrad = glm::vec3(0), accmat = glm::vec3(1); // initialize accumulated radiance and bxdf
               Ray r = Ray(lc, normalize(lc - spos));                  // construct ray
 
               //-- setup lens

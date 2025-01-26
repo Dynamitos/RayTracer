@@ -280,7 +280,7 @@ IntersectionInfo Scene::intersectModel(const ModelReference& reference, const Ra
             },
         .brdf =
             {
-                .albedo = glm::vec3(texCoords, 0.0f),
+                .albedo = glm::vec3(0, 1, 0.0f),
                 .emissive = glm::vec3(0.0f, 0.0f, 0.0f),
             },
     };
