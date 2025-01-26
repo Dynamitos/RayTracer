@@ -77,8 +77,6 @@ void Scene::generate()
   hierarchy = std::move(pendingNodes[0]);
 }
 
-extern glm::vec3 rnd01;
-
 void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tmax) const noexcept
 {
   IntersectionInfo info = generateIntersections(hierarchy, ray, tmin, tmax);
@@ -94,7 +92,7 @@ void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tm
     }
     else if (payload.depth > 5)
     {
-      if (rnd01.z >= p)
+      if (payload.rnd01.z >= p)
         return;
       else
         payload.accumulatedMaterial /= p;
@@ -127,8 +125,8 @@ void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tm
     // TODO: Next Event Estimation for mesh lights
 
     // indirect lighting
-    float r1 = 2 * std::numbers::pi * rnd01.x;
-    float r2 = rnd01.y;
+    float r1 = 2 * std::numbers::pi * payload.rnd01.x;
+    float r2 = payload.rnd01.y;
     float r2s = sqrt(r2);
     glm::vec3 w = info.hitInfo.normalLight;
     glm::vec3 u = glm::normalize(glm::cross(std::abs(w.x) > 0.1 ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0), w));
