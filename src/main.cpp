@@ -36,8 +36,8 @@ int main()
       scene.startRender(camera, render);
     }
     ImGui::Text("Render Stats");
-    ImGui::Text("Last Sample Time:    %.3f", scene.getLastSampleTime());
-    ImGui::Text("Average Sample Time: %.3f", scene.getAverageSampleTime());
+    ImGui::Text("Last Sample Time:    %.3f ms", scene.getLastSampleTime());
+    ImGui::Text("Average Sample Time: %.3f ms", scene.getAverageSampleTime());
     ImGui::PlotLines("Sample Times", scene.getSampleTimes().data(), scene.getSampleTimes().size(), 0, 0, FLT_MAX, FLT_MAX, ImVec2(0, 40));
     window.update(scene.getImage());
   }
