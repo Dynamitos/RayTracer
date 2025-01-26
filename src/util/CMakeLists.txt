@@ -1,5 +1,7 @@
 target_sources(RayTracer
 	PRIVATE
+		BRDF.h
+		BRDF.cpp
 		Camera.h
 		Material.h
 		Material.cpp

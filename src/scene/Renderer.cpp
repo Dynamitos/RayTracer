@@ -93,7 +93,8 @@ void Renderer::render(Camera camera, RenderParameter params)
 
               if (intersection.has_value())
               {
-                accumulator[w + h * params.width] = intersection->albedo;
+
+                accumulator[w + h * params.width] = intersection->shadingInfo.albedo;
               }
             }
             co_return;

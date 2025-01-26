@@ -80,9 +80,9 @@ std::optional<IntersectionInfo> Scene::traceRay(Ray ray) const
   IntersectionInfo info;
   for (uint32_t i = 0; i < results.size(); ++i)
   {
-    if (results[i].t < closestT)
+    if (results[i].hitInfo.t < closestT)
     {
-      closestT = results[i].t;
+      closestT = results[i].hitInfo.t;
       info = results[i];
     }
   }
@@ -128,14 +128,22 @@ std::optional<IntersectionInfo> Scene::intersectModel(const ModelReference& refe
 
   for (size_t posIndex = 0, edgeIndex = 0, normalIndex = 0; posIndex < reference.numIndices; posIndex++, edgeIndex += 2, normalIndex++)
   {
-    const auto p0 = positionPool[reference.positionOffset + indicesPool[reference.indicesOffset + posIndex].x];
-    const auto p1 = positionPool[reference.positionOffset + indicesPool[reference.indicesOffset + posIndex].y];
-    const auto p2 = positionPool[reference.positionOffset + indicesPool[reference.indicesOffset + posIndex].z];
+    const auto i0 = indicesPool[reference.indicesOffset + posIndex].x;
+    const auto i1 = indicesPool[reference.indicesOffset + posIndex].y;
+    const auto i2 = indicesPool[reference.indicesOffset + posIndex].z;
 
-    const auto e0 = edgesPool[reference.indicesOffset + edgeIndex];
-    const auto e1 = edgesPool[reference.indicesOffset + edgeIndex + 1];
+    const auto& p0 = positionPool[reference.positionOffset + i0];
+    const auto& p1 = positionPool[reference.positionOffset + i1];
+    const auto& p2 = positionPool[reference.positionOffset + i2];
 
-    const auto n = faceNormalsPool[reference.indicesOffset + normalIndex];
+    const auto& t0 = texCoordsPool[reference.positionOffset + i0];
+    const auto& t1 = texCoordsPool[reference.positionOffset + i1];
+    const auto& t2 = texCoordsPool[reference.positionOffset + i2];
+
+    const auto& e0 = edgesPool[reference.indicesOffset + edgeIndex];
+    const auto& e1 = edgesPool[reference.indicesOffset + edgeIndex + 1];
+
+    const auto& n = faceNormalsPool[reference.indicesOffset + normalIndex];
 
     const auto s = ray.origin - p0;
     const auto s1 = glm::cross(ray.direction, e1);
@@ -145,6 +153,8 @@ std::optional<IntersectionInfo> Scene::intersectModel(const ModelReference& refe
     const auto resultVector = glm::vec3(glm::dot(s2, e1), glm::dot(s1, s), glm::dot(s2, ray.direction)) * fraction;
 
     const float b3 = 1.0f - resultVector.y - resultVector.z;
+
+    const auto texCoords = t0 * resultVector.y + t1 * resultVector.z + t2 * b3;
 
     if (b3 < 0 || b3 > 1)
       continue;
@@ -158,10 +168,21 @@ std::optional<IntersectionInfo> Scene::intersectModel(const ModelReference& refe
 
     if (!intersection.has_value() || resultVector.x < distance)
     {
-      intersection = IntersectionInfo{.position = ray.origin + ray.direction * resultVector.x,
-                                      .normal = n,
-                                      .albedo = glm::vec3(0.7f, 0.7f, 0.7f),
-                                      .emissive = glm::vec3(0.0f, 0.0f, 0.0f),};
+      intersection = IntersectionInfo{
+          .hitInfo =
+              {
+                  .t = resultVector.x,
+                  .position = ray.origin + ray.direction * resultVector.x,
+                  .normal = n,
+                  .texCoords = texCoords,
+              },
+          .shadingInfo =
+              {
+                  .albedo = glm::vec3(texCoords, 0.0f),
+                  .emissive = glm::vec3(0.0f, 0.0f, 0.0f),
+                  .type = MaterialType::DIFFUSE,
+              },
+      };
       distance = resultVector.x;
     }
   }
