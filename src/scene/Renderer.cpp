@@ -93,17 +93,18 @@ void Renderer::render(Camera camera, RenderParameter params)
 
               bvh.traceRay(r, payload, 1e-4, 1e20);
 
-              accumulator[w + h * params.width] += payload.accumulatedRadiance;
+              accumulator[w + h * params.width] += payload.accumulatedRadiance / float(params.numSamples);
             }
             co_return;
           }(w, samp));
     }
     threadPool.runBatch(std::move(batch));
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+    sampleTimes.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0f);
+    float resolver = float(params.numSamples) / float(samp);
     for (uint32_t i = 0; i < accumulator.size(); ++i)
     {
-      image[i] = glm::pow(glm::max((accumulator[i] / float(samp+1)), 0.0f), glm::vec3(0.45f));
+      image[i] = glm::pow(glm::max(accumulator[i] * resolver, 0.0f), glm::vec3(0.45f));
     }
   }
 }
