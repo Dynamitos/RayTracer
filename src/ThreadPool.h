@@ -25,8 +25,8 @@ private:
     std::mutex queueLock;
     std::condition_variable queueCV;
     std::condition_variable completedCV;
-    uint32_t numRemaining;
-    uint32_t numRunning;
+    uint32_t numRemaining = 0;
+    uint32_t numRunning = 0;
     std::list<Batch> taskQueue;
     std::vector<std::thread> workers;
 };
