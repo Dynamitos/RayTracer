@@ -20,6 +20,5 @@ class Window
     GLuint program;
     GLuint vertShader;
     GLuint fragShader;
-    GLuint textureLocation;
     GLFWwindow* window;
 };

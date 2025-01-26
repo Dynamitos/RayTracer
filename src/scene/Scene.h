@@ -15,27 +15,27 @@ struct ModelReference
 
 struct PointLight
 {
-  glm::vec3 position;
-  glm::vec3 color;
-  float attenuation;
+  glm::vec3 position = glm::vec3(0, 0, 0);
+  glm::vec3 color = glm::vec3(1, 1, 1);
+  float attenuation = 1;
 };
 
 struct DirectionalLight
 {
-  glm::vec3 direction;
-  glm::vec3 color;
+  glm::vec3 direction = glm::vec3(0, 1, 0);
+  glm::vec3 color = glm::vec3(1, 1, 1);
 };
 
 class Scene
 {
 public:
-  void addPointLight(PointLight point) { points.push_back(point); }
+  void addPointLight(PointLight point) { pointLights.push_back(point); }
   void addDirectionalLight(DirectionalLight dir) { directionalLights.push_back(dir); }
   void addModel(PModel model, glm::mat4 transform);
   void addModels(std::vector<PModel> models, glm::mat4 transform);
   void generate();
 
-  std::optional<IntersectionInfo> traceRay(Ray ray) const;
+  void traceRay(Ray ray, Payload& payload, const float tmin, const float tmax) const noexcept;
 
 private:
   std::vector<glm::vec3> positionPool;
@@ -44,7 +44,7 @@ private:
   std::vector<glm::vec3> edgesPool;
   std::vector<glm::vec3> faceNormalsPool;
 
-  std::vector<PointLight> points;
+  std::vector<PointLight> pointLights;
   std::vector<DirectionalLight> directionalLights;
 
   DECLARE_REF(Node)
@@ -60,6 +60,9 @@ private:
   PNode hierarchy;
   std::vector<PModel> models;
 
-  std::vector<IntersectionInfo> generateIntersections(const PNode& currentNode, Ray ray) const;
-  std::optional<IntersectionInfo> intersectModel(const ModelReference& reference, Ray ray) const;
+  // tests if a ray intersects any geometry, no hit information, for shadow rays
+  bool testIntersection(const PNode& currentNode, const Ray ray, const float tmin, const float tmax) const noexcept;
+  std::vector<IntersectionInfo> generateIntersections(const PNode& currentNode, const Ray ray, const float tmin, const float tmax) const noexcept;
+  bool testModel(const ModelReference& reference, const Ray ray, const float tmin, const float tmax) const noexcept;
+  std::vector<IntersectionInfo> intersectModel(const ModelReference& reference, const Ray ray, const float tmin, const float tmax) const noexcept;
 };

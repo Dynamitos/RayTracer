@@ -51,7 +51,7 @@ Window::Window(int width, int height) : width(width), height(height)
 
                                 uniform sampler2D tex;
 
-                                void main() { color = texture(tex, texcoords); });
+                                void main() { color = texture(tex, vec2(texcoords.x, -texcoords.y)); });
     glShaderSource(vertShader, 1, &vertCode, nullptr);
     glCompileShader(vertShader);
     int success;

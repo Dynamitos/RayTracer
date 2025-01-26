@@ -8,7 +8,7 @@
 struct IntersectionInfo
 {
   HitInfo hitInfo;
-  MaterialInfo shadingInfo;
+  BRDF brdf;
 };
 class Model
 {

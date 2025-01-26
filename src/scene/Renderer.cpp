@@ -6,9 +6,9 @@
 
 Renderer::Renderer()
 {
-  bvh.addPointLight(PointLight{
-      .position = glm::vec3(2, 0, 2),
-      .color = glm::vec3(0, 1, 0),
+  bvh.addDirectionalLight(DirectionalLight{
+      .direction = glm::normalize(glm::vec3(-0.4f, -0.2f, -0.6f)),
+      .color = glm::vec3(1, 1, 1),
   });
   bvh.addModels(ModelLoader::loadModel("../res/models/cube.fbx"),
                 glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
@@ -40,6 +40,8 @@ glm::vec3 rand01(glm::uvec3 x)
   return glm::vec3(x) * (1.0f / float(0xffffffffU));
 }
 
+thread_local glm::vec3 rnd01;
+
 void Renderer::render(Camera camera, RenderParameter params)
 {
   for (int samp = 0; samp < params.numSamples; ++samp)
@@ -64,8 +66,8 @@ void Renderer::render(Camera camera, RenderParameter params)
 
               //-- sample sensor
               glm::uvec2 pix = glm::uvec2(w, h);
-              glm::vec3 rnd1 = rand01(glm::uvec3(pix, samp));
-              glm::vec2 rnd2 = 2.0f * glm::vec2(rnd1); // vvv tent filter sample
+              rnd01 = rand01(glm::uvec3(pix, samp));
+              glm::vec2 rnd2 = 2.0f * glm::vec2(rnd01); // vvv tent filter sample
               glm::vec2 tent =
                   glm::vec2(rnd2.x < 1 ? sqrt(rnd2.x) - 1 : 1 - sqrt(2 - rnd2.x), rnd2.y < 1 ? sqrt(rnd2.y) - 1 : 1 - sqrt(2 - rnd2.y));
               glm::vec2 s =
@@ -82,20 +84,17 @@ void Renderer::render(Camera camera, RenderParameter params)
               glm::vec3 lensX = glm::cross(lensN, glm::vec3(0, 1, 0)); // the exact vector doesnt matter
               glm::vec3 lensY = glm::cross(lensN, lensX);
 
-              glm::vec3 lensSample = lensP + rnd1.x * camera.A * lensX + rnd1.y * camera.A * lensY;
+              glm::vec3 lensSample = lensP + rnd01.x * camera.A * lensX + rnd01.y * camera.A * lensY;
 
               glm::vec3 focalPoint = cam.origin + (camera.S_O + S_I) * cam.direction;
               float t = glm::dot(focalPoint - r.origin, lensN) / glm::dot(r.direction, lensN);
               glm::vec3 focus = r.origin + t * r.direction;
               r = Ray(lensSample, normalize(focus - lensSample)); // TODO: Fix lens
 
-              auto intersection = bvh.traceRay(r);
+              Payload payload;
+              bvh.traceRay(r, payload, 1e-4, 1e20);
 
-              if (intersection.has_value())
-              {
-
-                accumulator[w + h * params.width] = intersection->shadingInfo.albedo;
-              }
+              accumulator[w + h * params.width] += payload.accumulatedRadiance / float(params.numSamples);
             }
             co_return;
           }(w, samp));
