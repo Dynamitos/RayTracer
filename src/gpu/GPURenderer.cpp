@@ -1,13 +1,20 @@
 #include "GPURenderer.h"
 #include <slang-com-ptr.h>
 #include <slang.h>
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
 
 GPURenderer::GPURenderer()
     : instance(nullptr), physicalDevice(nullptr), device(nullptr), queue(nullptr), cmdPool(nullptr), cmdBuffers(nullptr),
       descriptorLayout(nullptr), descriptorSet(nullptr), descriptorPool(nullptr), pipelineLayout(nullptr), rayGen(nullptr),
-      closestHit(nullptr), miss(nullptr), pipeline(nullptr)
+      closestHit(nullptr), miss(nullptr), pipeline(nullptr), radianceAccumulator(nullptr), radianceAllocation(nullptr), image(nullptr),
+      imageAllocation(nullptr)
 
 {
+  createDevice();
+  createCommands();
+  createDescriptors();
+  createShaders();
 }
 
 GPURenderer::~GPURenderer() {}
@@ -43,6 +50,21 @@ void GPURenderer::createDevice()
   vk::DeviceQueueCreateInfo deviceQueueCreateInfo({}, computeQueueFamily, 1, &queuePriority);
   vk::DeviceCreateInfo deviceCreateInfo({}, deviceQueueCreateInfo);
   device = Device(physicalDevice, deviceCreateInfo);
+
+  VmaVulkanFunctions vulkanFunctions = {};
+  vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+  vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+
+  VmaAllocatorCreateInfo allocatorCreateInfo = {};
+  allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+  allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+  allocatorCreateInfo.physicalDevice = *physicalDevice;
+  allocatorCreateInfo.device = *device;
+  allocatorCreateInfo.instance = *instance;
+  allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+  VmaAllocator allocator;
+  vmaCreateAllocator(&allocatorCreateInfo, &allocator);
 }
 
 void GPURenderer::createCommands()
@@ -57,8 +79,46 @@ void GPURenderer::createCommands()
 
 void GPURenderer::createDescriptors()
 {
-  vk::DescriptorSetLayoutBinding descriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
-  vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo({}, descriptorSetLayoutBinding);
+  vk::DescriptorSetLayoutBinding bindings[] = {
+      // camera
+      vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // scene acceleration structure
+      vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eAccelerationStructureKHR, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // radiance accumulator
+      vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eStorageImage, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // image
+      vk::DescriptorSetLayoutBinding(3, vk::DescriptorType::eStorageImage, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // model data
+      vk::DescriptorSetLayoutBinding(4, vk::DescriptorType::eStorageBuffer, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // material data
+      vk::DescriptorSetLayoutBinding(5, vk::DescriptorType::eStorageBuffer, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // positions
+      vk::DescriptorSetLayoutBinding(6, vk::DescriptorType::eStorageBuffer, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // texcoords
+      vk::DescriptorSetLayoutBinding(7, vk::DescriptorType::eStorageBuffer, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // normals
+      vk::DescriptorSetLayoutBinding(8, vk::DescriptorType::eStorageBuffer, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // directional lights
+      vk::DescriptorSetLayoutBinding(9, vk::DescriptorType::eStorageBuffer, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // point lights
+      vk::DescriptorSetLayoutBinding(10, vk::DescriptorType::eStorageBuffer, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+      // index buffer
+      vk::DescriptorSetLayoutBinding(11, vk::DescriptorType::eStorageBuffer, 1,
+                                     vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR),
+  };
+
+  vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo({}, bindings);
   descriptorLayout = DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
 
   // create a PipelineLayout using that DescriptorSetLayout
@@ -108,4 +168,83 @@ void GPURenderer::createShaders()
   */
 }
 
-void GPURenderer::render(Camera cam, RenderParameter param) {}
+void GPURenderer::render(Camera cam, RenderParameter param)
+{
+  // camera
+  {
+    VkBufferCreateInfo bufferInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = sizeof(GPUCamera),
+        .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+    };
+    VmaAllocationCreateInfo allocInfo = {
+        .flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+    };
+
+    vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &cameraBuffer, &cameraAllocation, nullptr);
+    GPUCamera gpuCam = {
+        .cameraPosition = cam.position,
+        .f = cam.f,
+        .cameraForward = glm::normalize(cam.target - cam.position),
+        .S_O = cam.S_O,
+        .fogEmm = glm::vec3(0, 0, 0),
+        .ks = 0,
+        .A = cam.A,
+        .ka = 0,
+    };
+    vmaCopyMemoryToAllocation(allocator, &gpuCam, cameraAllocation, 0, sizeof(GPUCamera));
+  }
+  // radiance accumulator
+  {
+    VkImageCreateInfo imageInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+        .extent =
+            {
+                .width = (uint32_t)param.width,
+                .height = (uint32_t)param.height,
+                .depth = 1,
+            },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VK_IMAGE_USAGE_STORAGE_BIT,
+        .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+
+    VmaAllocationCreateInfo allocCreateInfo = {
+        .flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+    };
+    vmaCreateImage(allocator, &imageInfo, &allocCreateInfo, &radianceAccumulator, &radianceAllocation, nullptr);
+  }
+  // image
+  {
+    VkImageCreateInfo imageInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+        .extent =
+            {
+                .width = (uint32_t)param.width,
+                .height = (uint32_t)param.height,
+                .depth = 1,
+            },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+
+    VmaAllocationCreateInfo allocCreateInfo = {
+        .flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+    };
+    vmaCreateImage(allocator, &imageInfo, &allocCreateInfo, &image, &imageAllocation, nullptr);
+  }
+}

@@ -21,28 +21,9 @@ void Scene::addModels(std::vector<PModel> _models, glm::mat4 transform)
 void Scene::generate()
 {
   std::vector<PNode> pendingNodes;
-  while (!models.empty())
+  for (const auto& [model, ref] : std::views::zip(models, refs))
   {
-    auto& model = models.back();
-    ModelReference ref = {
-        .positionOffset = (uint32_t)positionPool.size(),
-        .indicesOffset = (uint32_t)indicesPool.size(),
-        .numIndices = (uint32_t)model->indices.size(),
-    };
-    for (uint32_t i = 0; i < model->positions.size(); ++i)
-    {
-      positionPool.push_back(model->positions[i]);
-      texCoordsPool.push_back(model->texCoords[i]);
-    }
-    for (uint32_t i = 0; i < model->indices.size(); ++i)
-    {
-      indicesPool.push_back(model->indices[i]);
-      edgesPool.push_back(model->edges[i * 2 + 0]);
-      edgesPool.push_back(model->edges[i * 2 + 1]);
-      faceNormalsPool.push_back(glm::normalize(model->faceNormals[i]));
-    }
     pendingNodes.push_back(std::make_unique<Node>(model->boundingBox, ref));
-    models.pop_back();
   }
   while (pendingNodes.size() > 1)
   {
@@ -135,6 +116,35 @@ void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tm
     payload.emissive = 0;
     payload.depth++;
     traceRay(ray, payload, tmin, tmax);
+  }
+}
+
+void Scene::populateGeometryPools()
+{
+    //todo: clear everything
+  for(uint32_t i = 0; i < models.size(); ++i)
+  {
+    auto& model = models[i];
+    ModelReference ref = {
+        .positionOffset = (uint32_t)positionPool.size(),
+        .numPositions = (uint32_t)model->positions.size(),
+        .indicesOffset = (uint32_t)indicesPool.size(),
+        .numIndices = (uint32_t)model->indices.size(),
+    };
+    for (uint32_t i = 0; i < model->positions.size(); ++i)
+    {
+      positionPool.push_back(model->positions[i]);
+      texCoordsPool.push_back(model->texCoords[i]);
+      normalsPool.push_back(model->normals[i]);
+    }
+    for (uint32_t i = 0; i < model->indices.size(); ++i)
+    {
+      indicesPool.push_back(model->indices[i]);
+      edgesPool.push_back(model->edges[i * 2 + 0]);
+      edgesPool.push_back(model->edges[i * 2 + 1]);
+      faceNormalsPool.push_back(glm::normalize(model->faceNormals[i]));
+    }
+    refs.push_back(ref);
   }
 }
 
