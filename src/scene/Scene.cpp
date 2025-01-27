@@ -80,7 +80,7 @@ void Scene::generate()
 void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tmax) const noexcept
 {
   IntersectionInfo info = generateIntersections(hierarchy, ray, tmin, tmax);
-  
+
   if (info.hitInfo.t < std::numeric_limits<float>::max())
   {
     // russian roulette ray termination
@@ -154,12 +154,11 @@ bool Scene::testIntersection(const PNode& currentNode, const Ray ray, const floa
   return leftResults || rightResults;
 }
 
-IntersectionInfo Scene::generateIntersections(const PNode& currentNode, const Ray ray, const float tmin,
-                                                           float tmax) const noexcept
+IntersectionInfo Scene::generateIntersections(const PNode& currentNode, const Ray ray, const float tmin, float tmax) const noexcept
 {
   if (!currentNode->aabb.intersects(ray, tmin, tmax))
   {
-  //  return {};
+    return {};
   }
   if (currentNode->model.numIndices > 0)
   {
@@ -219,8 +218,7 @@ bool Scene::testModel(const ModelReference& reference, const Ray ray, const floa
 
   return false;
 }
-IntersectionInfo Scene::intersectModel(const ModelReference& reference, const Ray ray, const float tmin,
-                                                    float tmax) const noexcept
+IntersectionInfo Scene::intersectModel(const ModelReference& reference, const Ray ray, const float tmin, float tmax) const noexcept
 {
   IntersectionInfo intersection = {};
 

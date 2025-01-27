@@ -20,15 +20,18 @@ Renderer::~Renderer() {}
 
 void Renderer::startRender(Camera cam, RenderParameter params)
 {
-  threadPool.cancel();
-  pendingCancel = true;
-  if (worker.joinable())
+  //threadPool.cancel();
+  if (running)
+  {
+    running = false;
     worker.join();
-  pendingCancel = false;
+  }
+  sampleTimes.clear();
   image.clear();
   accumulator.clear();
   image.resize(params.width * params.height);
   accumulator.resize(params.width * params.height);
+  running = true;
   worker = std::thread(&Renderer::render, this, cam, params);
 }
 
@@ -43,7 +46,7 @@ void Renderer::render(Camera camera, RenderParameter params)
 {
   for (int samp = 0; samp < params.numSamples; ++samp)
   {
-    if (pendingCancel)
+    if (!running)
       return;
     auto start = std::chrono::high_resolution_clock::now();
     Batch batch;
@@ -76,7 +79,7 @@ void Renderer::render(Camera camera, RenderParameter params)
                    0.5f) *
                   sdim;
               glm::vec3 spos = cam.origin + cx * s.x + cy * s.y, lc = cam.origin + cam.direction * 0.035f; // sample on 3d sensor plane
-              Ray r = Ray(lc, normalize(lc - spos));                  // construct ray
+              Ray r = Ray(lc, normalize(lc - spos));                                                       // construct ray
 
               //-- setup lens
               glm::vec3 lensP = lc;
@@ -89,7 +92,7 @@ void Renderer::render(Camera camera, RenderParameter params)
               glm::vec3 focalPoint = cam.origin + (camera.S_O + S_I) * cam.direction;
               float t = glm::dot(focalPoint - r.origin, lensN) / glm::dot(r.direction, lensN);
               glm::vec3 focus = r.origin + t * r.direction;
-              r = Ray(lensSample, normalize(focus - lensSample)); // TODO: Fix lens
+              // r = Ray(lensSample, normalize(focus - lensSample)); // TODO: Fix lens
 
               bvh.traceRay(r, payload, 1e-4, 1e20);
 
@@ -101,7 +104,7 @@ void Renderer::render(Camera camera, RenderParameter params)
     threadPool.runBatch(std::move(batch));
     auto end = std::chrono::high_resolution_clock::now();
     sampleTimes.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0f);
-    float resolver = float(params.numSamples) / float(samp);
+    float resolver = float(params.numSamples) / float(samp+1);
     for (uint32_t i = 0; i < accumulator.size(); ++i)
     {
       image[i] = glm::pow(glm::max(accumulator[i] * resolver, 0.0f), glm::vec3(0.45f));

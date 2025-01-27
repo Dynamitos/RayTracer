@@ -30,7 +30,7 @@ private:
   virtual void render(Camera cam, RenderParameter params);
   ThreadPool threadPool;
   std::thread worker;
-  std::atomic_bool pendingCancel = false;
+  std::atomic_bool running = false;
   std::vector<float> sampleTimes;
   float lastSampleTime;
   float averageSampleTime;
