@@ -20,7 +20,14 @@ std::vector<PModel> ModelLoader::loadModel(std::string_view filename)
     {
       auto aiVert = mesh->mVertices[v];
       model->positions.push_back(glm::vec3(aiVert.x, aiVert.y, aiVert.z));
-      model->texCoords.push_back(glm::vec2(mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y));
+      if (mesh->HasTextureCoords(0))
+      {
+        model->texCoords.push_back(glm::vec2(mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y));
+      }
+      else
+      {
+        model->texCoords.push_back(glm::vec2(0, 0));
+      }
       aabb.adjust(model->positions.back());
     }
     for (int i = 0; i < mesh->mNumFaces; ++i)

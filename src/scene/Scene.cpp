@@ -159,7 +159,7 @@ IntersectionInfo Scene::generateIntersections(const PNode& currentNode, const Ra
 {
   if (!currentNode->aabb.intersects(ray, tmin, tmax))
   {
-    return {};
+  //  return {};
   }
   if (currentNode->model.numIndices > 0)
   {

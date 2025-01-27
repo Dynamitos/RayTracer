@@ -9,8 +9,9 @@ int main()
   Renderer scene;
   Window window(1920, 1080);
   Camera camera = Camera{
-      .position = glm::vec3(20, 5, 5),
+      .position = glm::vec3(-30, 5, 5),
       .target = glm::vec3(0, 0, 0),
+      .S_O = 40,
   };
   RenderParameter render = RenderParameter{
       .width = 1920,

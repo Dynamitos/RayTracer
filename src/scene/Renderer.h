@@ -20,7 +20,7 @@ public:
   void startRender(Camera cam, RenderParameter params);
   constexpr const std::vector<glm::vec3>& getImage() const { return image; }
   constexpr const std::vector<float>& getSampleTimes() const { return sampleTimes; }
-  constexpr const float getLastSampleTime() const { return sampleTimes.back(); }
+  constexpr const float getLastSampleTime() const { return sampleTimes.empty() ? 0 : sampleTimes.back(); }
   constexpr const float getAverageSampleTime() const
   {
     return std::accumulate(sampleTimes.begin(), sampleTimes.end(), 0.0f) / sampleTimes.size();
