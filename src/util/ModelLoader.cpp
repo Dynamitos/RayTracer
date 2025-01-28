@@ -8,7 +8,7 @@
 std::vector<PModel> ModelLoader::loadModel(std::string_view filename)
 {
   Assimp::Importer importer;
-  const aiScene* scene = importer.ReadFile(std::string(filename), aiProcess_Triangulate);
+  const aiScene* scene = importer.ReadFile(std::string(filename), aiProcess_Triangulate | aiProcess_GenNormals);
   std::cout << importer.GetErrorString() << std::endl;
   std::vector<PModel> result;
   for (int m = 0; m < scene->mNumMeshes; ++m)
@@ -28,6 +28,7 @@ std::vector<PModel> ModelLoader::loadModel(std::string_view filename)
       {
         model->texCoords.push_back(glm::vec2(0, 0));
       }
+      model->normals.push_back(glm::vec3(mesh->mNormals[v].x, mesh->mNormals[v].y, mesh->mNormals[v].z));
       aabb.adjust(model->positions.back());
     }
     for (int i = 0; i < mesh->mNumFaces; ++i)

@@ -7,9 +7,9 @@
 
 struct RenderParameter
 {
-  int width;
-  int height;
-  int numSamples;
+  uint32_t width;
+  uint32_t height;
+  uint32_t numSamples;
 };
 
 class Renderer
@@ -26,7 +26,7 @@ public:
     return std::accumulate(sampleTimes.begin(), sampleTimes.end(), 0.0f) / sampleTimes.size();
   }
 
-private:
+protected:
   virtual void render(Camera cam, RenderParameter params);
   ThreadPool threadPool;
   std::thread worker;
@@ -40,5 +40,5 @@ private:
   std::vector<glm::vec3> accumulator;
   std::vector<PointLight> pointLights;
   std::vector<DirectionalLight> directionalLights;
-  Scene bvh;
+  std::unique_ptr<Scene> scene;
 };

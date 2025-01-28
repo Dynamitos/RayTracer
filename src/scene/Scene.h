@@ -37,7 +37,7 @@ public:
   void addDirectionalLight(DirectionalLight dir) { directionalLights.push_back(dir); }
   void addModel(PModel model, glm::mat4 transform);
   void addModels(std::vector<PModel> models, glm::mat4 transform);
-  virtual void generate();
+  void generate();
 
   void traceRay(Ray ray, Payload& payload, const float tmin, const float tmax) const noexcept;
 
@@ -66,11 +66,12 @@ protected:
   PNode hierarchy;
   std::vector<PModel> models;
 
-  void populateGeometryPools();
+  virtual void createRayTracingHierarchy();
 
   // tests if a ray intersects any geometry, no hit information, for shadow rays
   bool testIntersection(const PNode& currentNode, const Ray ray, const float tmin, const float tmax) const noexcept;
   IntersectionInfo generateIntersections(const PNode& currentNode, const Ray ray, const float tmin, const float tmax) const noexcept;
   bool testModel(const ModelReference& reference, const Ray ray, const float tmin, const float tmax) const noexcept;
   IntersectionInfo intersectModel(const ModelReference& reference, const Ray ray, const float tmin, const float tmax) const noexcept;
+  friend class GPURenderer;
 };

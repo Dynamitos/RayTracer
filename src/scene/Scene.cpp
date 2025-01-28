@@ -20,42 +20,32 @@ void Scene::addModels(std::vector<PModel> _models, glm::mat4 transform)
 
 void Scene::generate()
 {
-  std::vector<PNode> pendingNodes;
-  for (const auto& [model, ref] : std::views::zip(models, refs))
+  // todo: clear everything
+  for (uint32_t i = 0; i < models.size(); ++i)
   {
-    pendingNodes.push_back(std::make_unique<Node>(model->boundingBox, ref));
-  }
-  while (pendingNodes.size() > 1)
-  {
-    int lhs = pendingNodes.size();
-    int rhs = pendingNodes.size();
-    float minSurface = std::numeric_limits<float>::max();
-    for (int i = 0; i < pendingNodes.size(); ++i)
+    auto& model = models[i];
+    ModelReference ref = {
+        .positionOffset = (uint32_t)positionPool.size(),
+        .numPositions = (uint32_t)model->positions.size(),
+        .indicesOffset = (uint32_t)indicesPool.size(),
+        .numIndices = (uint32_t)model->indices.size(),
+    };
+    for (uint32_t i = 0; i < model->positions.size(); ++i)
     {
-      for (int j = 0; j < pendingNodes.size(); ++j)
-      {
-        if (i == j)
-          continue;
-        AABB combined = AABB::combine(pendingNodes[i]->aabb, pendingNodes[j]->aabb);
-        float surface = combined.surfaceArea();
-        if (minSurface > surface)
-        {
-          lhs = i;
-          rhs = j;
-          minSurface = surface;
-        }
-      }
+      positionPool.push_back(model->positions[i]);
+      texCoordsPool.push_back(model->texCoords[i]);
+      normalsPool.push_back(model->normals[i]);
     }
-    PNode newNode = std::make_unique<Node>(AABB::combine(pendingNodes[lhs]->aabb, pendingNodes[rhs]->aabb));
-    newNode->left = std::move(pendingNodes[lhs]);
-    newNode->right = std::move(pendingNodes[rhs]);
-    assert(rhs > lhs);
-    //
-    pendingNodes.erase(pendingNodes.begin() + rhs);
-    pendingNodes.erase(pendingNodes.begin() + lhs);
-    pendingNodes.push_back(std::move(newNode));
+    for (uint32_t i = 0; i < model->indices.size(); ++i)
+    {
+      indicesPool.push_back(model->indices[i]);
+      edgesPool.push_back(model->edges[i * 2 + 0]);
+      edgesPool.push_back(model->edges[i * 2 + 1]);
+      faceNormalsPool.push_back(glm::normalize(model->faceNormals[i]));
+    }
+    refs.push_back(ref);
   }
-  hierarchy = std::move(pendingNodes[0]);
+  createRayTracingHierarchy();
 }
 
 void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tmax) const noexcept
@@ -119,33 +109,44 @@ void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tm
   }
 }
 
-void Scene::populateGeometryPools()
+void Scene::createRayTracingHierarchy()
 {
-    //todo: clear everything
-  for(uint32_t i = 0; i < models.size(); ++i)
+  std::vector<PNode> pendingNodes;
+  for (const auto& [model, ref] : std::views::zip(models, refs))
   {
-    auto& model = models[i];
-    ModelReference ref = {
-        .positionOffset = (uint32_t)positionPool.size(),
-        .numPositions = (uint32_t)model->positions.size(),
-        .indicesOffset = (uint32_t)indicesPool.size(),
-        .numIndices = (uint32_t)model->indices.size(),
-    };
-    for (uint32_t i = 0; i < model->positions.size(); ++i)
-    {
-      positionPool.push_back(model->positions[i]);
-      texCoordsPool.push_back(model->texCoords[i]);
-      normalsPool.push_back(model->normals[i]);
-    }
-    for (uint32_t i = 0; i < model->indices.size(); ++i)
-    {
-      indicesPool.push_back(model->indices[i]);
-      edgesPool.push_back(model->edges[i * 2 + 0]);
-      edgesPool.push_back(model->edges[i * 2 + 1]);
-      faceNormalsPool.push_back(glm::normalize(model->faceNormals[i]));
-    }
-    refs.push_back(ref);
+    pendingNodes.push_back(std::make_unique<Node>(model->boundingBox, ref));
   }
+  while (pendingNodes.size() > 1)
+  {
+    int lhs = pendingNodes.size();
+    int rhs = pendingNodes.size();
+    float minSurface = std::numeric_limits<float>::max();
+    for (int i = 0; i < pendingNodes.size(); ++i)
+    {
+      for (int j = 0; j < pendingNodes.size(); ++j)
+      {
+        if (i == j)
+          continue;
+        AABB combined = AABB::combine(pendingNodes[i]->aabb, pendingNodes[j]->aabb);
+        float surface = combined.surfaceArea();
+        if (minSurface > surface)
+        {
+          lhs = i;
+          rhs = j;
+          minSurface = surface;
+        }
+      }
+    }
+    PNode newNode = std::make_unique<Node>(AABB::combine(pendingNodes[lhs]->aabb, pendingNodes[rhs]->aabb));
+    newNode->left = std::move(pendingNodes[lhs]);
+    newNode->right = std::move(pendingNodes[rhs]);
+    assert(rhs > lhs);
+    //
+    pendingNodes.erase(pendingNodes.begin() + rhs);
+    pendingNodes.erase(pendingNodes.begin() + lhs);
+    pendingNodes.push_back(std::move(newNode));
+  }
+  hierarchy = std::move(pendingNodes[0]);
 }
 
 bool Scene::testIntersection(const PNode& currentNode, const Ray ray, const float tmin, float tmax) const noexcept

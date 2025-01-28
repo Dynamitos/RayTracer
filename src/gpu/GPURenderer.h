@@ -12,6 +12,7 @@ struct GPURenderer : public Renderer
 public:
   GPURenderer();
   virtual ~GPURenderer();
+  virtual void render(Camera cam, RenderParameter param) override;
 
 private:
   struct GPUCamera
@@ -25,47 +26,68 @@ private:
     float A;
     float ka;
   };
+
+  struct SampleParams
+  {
+    uint32_t pass;
+    uint32_t samplesPerPixel;
+    uint32_t numDirectionalLights;
+    uint32_t numPointLights;
+  };
   void createDevice();
   void createCommands();
   void createDescriptors();
-  void createShaders();
-
-  std::unique_ptr<GPUScene> scene;
+  void createPipeline();
 
   Context context;
-  Instance instance;
-  PhysicalDevice physicalDevice;
-  Device device;
-  Queue queue;
-  VmaAllocator allocator;
+  Instance instance = nullptr;
+  PhysicalDevice physicalDevice = nullptr;
+  Device device = nullptr;
+  Queue queue = nullptr;
+  VmaAllocator allocator = nullptr;
 
-  uint32_t computeQueueFamily;
-  CommandPool cmdPool;
-  CommandBuffers cmdBuffers;
+  vk::PhysicalDeviceAccelerationStructurePropertiesKHR accelerationProperties = {};
+  vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties = {};
+
+  uint32_t computeQueueFamily = 0;
+  CommandPool cmdPool = nullptr;
+  CommandBuffers cmdBuffers = nullptr;
   std::vector<Semaphore> semaphores;
   std::vector<Fence> fences;
 
-  DescriptorSetLayout descriptorLayout;
-  DescriptorSet descriptorSet;
-  DescriptorPool descriptorPool;
-  PipelineLayout pipelineLayout;
+  DescriptorSetLayout descriptorLayout = nullptr;
+  DescriptorSet descriptorSet = nullptr;
+  DescriptorPool descriptorPool = nullptr;
+  PipelineLayout pipelineLayout = nullptr;
 
-  ShaderModule rayGen;
-  ShaderModule closestHit;
-  ShaderModule miss;
+  ShaderModule rayGen = nullptr;
+  ShaderModule closestHit = nullptr;
+  ShaderModule miss = nullptr;
 
-  Pipeline pipeline;
+  Pipeline pipeline = nullptr;
 
-  Buffer cameraBuffer;
+  Buffer rayGenSBT = nullptr;
+  vk::StridedDeviceAddressRegionKHR rayGenAddr;
+  VmaAllocation rayGenAlloc;
+
+  Buffer closestHitSBT = nullptr;
+  vk::StridedDeviceAddressRegionKHR closestHitAddr;
+  VmaAllocation closestHitAlloc;
+
+  Buffer missSBT = nullptr;
+  vk::StridedDeviceAddressRegionKHR missAddr;
+  VmaAllocation missAlloc;
+
+  Buffer cameraBuffer = nullptr;
   VmaAllocation cameraAllocation;
 
-  Image radianceAccumulator;
-  ImageView radianceView;
+  Image radianceAccumulator = nullptr;
+  ImageView radianceView = nullptr;
   VmaAllocation radianceAllocation;
 
-  Image image;
-  ImageView imageView;
+  Image image = nullptr;
+  ImageView imageView = nullptr;
   VmaAllocation imageAllocation;
 
-  virtual void render(Camera cam, RenderParameter param);
+  void uploadToGPU(Buffer& buffer, void* data, size_t size);
 };

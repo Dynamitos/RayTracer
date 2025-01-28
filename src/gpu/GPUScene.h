@@ -9,12 +9,12 @@ using namespace vk::raii;
 class GPUScene : public Scene
 {
 public:
-  GPUScene(Device& device, VmaAllocator& allocator, CommandPool& cmdPool);
+  GPUScene(Device& device, VmaAllocator& allocator, CommandPool& cmdPool, Queue& queue);
   virtual ~GPUScene();
-  virtual void generate() override;
+  virtual void createRayTracingHierarchy() override;
 
 private:
-  void createStorageBuffer(VkBuffer& buffer, VmaAllocation& alloc, void* data, size_t size);
+  void createStorageBuffer(Buffer& buffer, VmaAllocation& alloc, void* data, size_t size);
 
   Device& device;
   VmaAllocator& allocator;
@@ -24,38 +24,41 @@ private:
   // bottom level acceleration structure
   struct BLAS
   {
-    vk::AccelerationStructureKHR handle;
-    VkBuffer buffer;
-    VmaAllocation alloc;
+    vk::AccelerationStructureKHR handle = nullptr;
+    vk::Buffer buffer = nullptr;
+    VmaAllocation alloc = nullptr;
   };
 
-  AccelerationStructureKHR accelerationStructure;
-  VmaAllocation accelerationAllocation;
+  AccelerationStructureKHR accelerationStructure = nullptr;
+  Buffer accelerationBuffer = nullptr;
+  VmaAllocation accelerationAllocation = nullptr;
+  Buffer instanceBuffer = nullptr;
+  VmaAllocation instanceAllocation = nullptr;
 
   std::vector<BLAS> blas;
 
-  VkBuffer modelBuffer;
+  Buffer modelBuffer = nullptr;
   VmaAllocation modelAllocation;
 
-  VkBuffer materialBuffer;
+  Buffer materialBuffer = nullptr;
   VmaAllocation materialAllocation;
 
-  VkBuffer positionBuffer;
+  Buffer positionBuffer = nullptr;
   VmaAllocation positionAllocation;
 
-  VkBuffer texCoordsBuffer;
+  Buffer texCoordsBuffer = nullptr;
   VmaAllocation texCoordsAllocation;
 
-  VkBuffer normalsBuffer;
+  Buffer normalsBuffer = nullptr;
   VmaAllocation normalsAllocation;
 
-  VkBuffer directionalLightBuffer;
+  Buffer directionalLightBuffer = nullptr;
   VmaAllocation directionalLightAllocation;
 
-  VkBuffer pointLightBuffer;
+  Buffer pointLightBuffer = nullptr;
   VmaAllocation pointLightAllocation;
 
-  VkBuffer indexBuffer;
+  Buffer indexBuffer = nullptr;
   VmaAllocation indexAllocation;
   friend class GPURenderer;
 };
