@@ -1,4 +1,5 @@
 #pragma once
+#include "gpu/GPUScene.h"
 #include "scene/Renderer.h"
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
@@ -29,6 +30,8 @@ private:
   void createDescriptors();
   void createShaders();
 
+  std::unique_ptr<GPUScene> scene;
+
   Context context;
   Instance instance;
   PhysicalDevice physicalDevice;
@@ -39,6 +42,8 @@ private:
   uint32_t computeQueueFamily;
   CommandPool cmdPool;
   CommandBuffers cmdBuffers;
+  std::vector<Semaphore> semaphores;
+  std::vector<Fence> fences;
 
   DescriptorSetLayout descriptorLayout;
   DescriptorSet descriptorSet;
@@ -51,13 +56,15 @@ private:
 
   Pipeline pipeline;
 
-  VkBuffer cameraBuffer;
+  Buffer cameraBuffer;
   VmaAllocation cameraAllocation;
 
-  VkImage radianceAccumulator;
+  Image radianceAccumulator;
+  ImageView radianceView;
   VmaAllocation radianceAllocation;
 
-  VkImage image;
+  Image image;
+  ImageView imageView;
   VmaAllocation imageAllocation;
 
   virtual void render(Camera cam, RenderParameter param);

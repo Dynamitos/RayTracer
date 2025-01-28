@@ -1,4 +1,8 @@
 #include "GPURenderer.h"
+#include "vulkan/vulkan_enums.hpp"
+#include "vulkan/vulkan_handles.hpp"
+#include "vulkan/vulkan_raii.hpp"
+#include "vulkan/vulkan_structs.hpp"
 #include <slang-com-ptr.h>
 #include <slang.h>
 #define VMA_IMPLEMENTATION
@@ -63,7 +67,6 @@ void GPURenderer::createDevice()
   allocatorCreateInfo.instance = *instance;
   allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
 
-  VmaAllocator allocator;
   vmaCreateAllocator(&allocatorCreateInfo, &allocator);
 }
 
@@ -71,10 +74,6 @@ void GPURenderer::createCommands()
 {
   vk::CommandPoolCreateInfo commandPoolCreateInfo({}, computeQueueFamily);
   cmdPool = CommandPool(device, commandPoolCreateInfo);
-
-  // allocate a CommandBuffer from the CommandPool
-  vk::CommandBufferAllocateInfo commandBufferAllocateInfo(cmdPool, vk::CommandBufferLevel::ePrimary, 10);
-  cmdBuffers = vk::raii::CommandBuffers(device, commandBufferAllocateInfo);
 }
 
 void GPURenderer::createDescriptors()
@@ -120,6 +119,14 @@ void GPURenderer::createDescriptors()
 
   vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo({}, bindings);
   descriptorLayout = DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
+
+  auto descriptorPoolSizes = {
+vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
+vk::DescriptorPoolSize(vk::DescriptorType::eAccelerationStructureKHR, 1),
+vk::DescriptorPoolSize(vk::DescriptorType::eStorageImage, 2),
+vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 8),
+  };
+  descriptorPool = DescriptorPool(device, vk::DescriptorPoolCreateInfo({}, 4, descriptorPoolSizes));
 
   // create a PipelineLayout using that DescriptorSetLayout
   vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo({}, *descriptorLayout);
@@ -307,7 +314,10 @@ void GPURenderer::render(Camera cam, RenderParameter param)
         .flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         .usage = VMA_MEMORY_USAGE_AUTO,
     };
-    vmaCreateImage(allocator, &imageInfo, &allocCreateInfo, &radianceAccumulator, &radianceAllocation, nullptr);
+    VkImage radianceImg;
+    vmaCreateImage(allocator, &imageInfo, &allocCreateInfo, &radianceImg, &radianceAllocation, nullptr);
+    radianceAccumulator = Image(device, radianceImg);
+    radianceView = device.createImageView(vk::ImageViewCreateInfo({}, *radianceAccumulator, vk::ImageViewType::e2D, vk::Format::eR32G32B32A32Sfloat));
   }
   // image
   {
@@ -333,6 +343,98 @@ void GPURenderer::render(Camera cam, RenderParameter param)
         .flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         .usage = VMA_MEMORY_USAGE_AUTO,
     };
-    vmaCreateImage(allocator, &imageInfo, &allocCreateInfo, &image, &imageAllocation, nullptr);
+    VkImage img;
+    vmaCreateImage(allocator, &imageInfo, &allocCreateInfo, &img, &imageAllocation, nullptr);
+    image = Image(device, img);
+    radianceView = device.createImageView(vk::ImageViewCreateInfo({}, *image, vk::ImageViewType::e2D, vk::Format::eR32G32B32A32Sfloat));
+  }
+
+  DescriptorSet descriptorSet = std::move(device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo(*descriptorPool, *descriptorLayout)).front());
+  std::vector<vk::WriteDescriptorSet> writes;
+  // have to use lists so the pointers arent invalidated by push
+  std::list<vk::DescriptorBufferInfo> buffers;
+  std::list<vk::WriteDescriptorSetAccelerationStructureKHR> accel;
+  std::list<vk::DescriptorImageInfo> images;
+  uint32_t bindingCounter = 0;
+  {
+    buffers.push_back(vk::DescriptorBufferInfo(cameraBuffer));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &buffers.back(), nullptr));
+  }
+  {
+    accel.push_back(vk::WriteDescriptorSetAccelerationStructureKHR(1, scene->accelerationStructure));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eAccelerationStructureKHR, nullptr, nullptr, nullptr, &accel.back()));
+  }
+  {
+    images.push_back(vk::DescriptorImageInfo({}, radianceView, vk::ImageLayout::eGeneral));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageImage, &images.back(), nullptr, nullptr));
+  }
+  {
+    images.push_back(vk::DescriptorImageInfo({}, imageView, vk::ImageLayout::eGeneral));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageImage, &images.back(), nullptr, nullptr));
+  }
+  {
+    buffers.push_back(vk::DescriptorBufferInfo(scene->modelBuffer));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &buffers.back(), nullptr));
+  }
+  {
+    buffers.push_back(vk::DescriptorBufferInfo(scene->materialBuffer));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &buffers.back(), nullptr));
+  }
+  {
+    buffers.push_back(vk::DescriptorBufferInfo(scene->positionsBuffer));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &buffers.back(), nullptr));
+  }
+  {
+    buffers.push_back(vk::DescriptorBufferInfo(scene->texCoordsBuffer));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &buffers.back(), nullptr));
+  }
+  {
+    buffers.push_back(vk::DescriptorBufferInfo(scene->normalsBuffer));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &buffers.back(), nullptr));
+  }
+  {
+    buffers.push_back(vk::DescriptorBufferInfo(scene->directionalLightsBuffer));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &buffers.back(), nullptr));
+  }
+  {
+    buffers.push_back(vk::DescriptorBufferInfo(scene->pointLightsBuffer));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &buffers.back(), nullptr));
+  }
+  {
+    buffers.push_back(vk::DescriptorBufferInfo(scene->indexBuffer));
+    writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &buffers.back(), nullptr));
+  }
+  device.updateDescriptorSets(writes, {});
+  
+  semaphores.resize(param.numSamples);
+  fences.resize(param.numSamples);
+  for (uint32_t samp = 0; samp < param.numSamples; ++samp)
+  {
+    semaphores[samp] = device.createSemaphore(vk::SemaphoreCreateInfo());
+    fences[samp] = device.createFence(vk::FenceCreateInfo());
+  }
+  // allocate a CommandBuffer from the CommandPool
+  vk::CommandBufferAllocateInfo commandBufferAllocateInfo(*cmdPool, vk::CommandBufferLevel::ePrimary, param.numSamples);
+  cmdBuffers = CommandBuffers(device, commandBufferAllocateInfo);
+  for (uint32_t samp = 0; samp < param.numSamples; ++samp)
+  {
+    auto& cmd = cmdBuffers[samp];
+    cmd.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+    cmd.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, *pipeline);
+    cmd.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, pipelineLayout, 0, descriptorSet, {});
+    cmd.traceRays(param.width, param.height, 1);
+    cmd.end();
+    if (samp == 0)
+    {
+      queue.submit(vk::SubmitInfo({}, cmd, semaphores[samp]), fences[samp]);
+    }
+    else
+    {
+      queue.submit(vk::SubmitInfo(semaphores[samp-1], vk::PipelineStageFlagBits::eRayTracingShaderKHR, cmd, semaphores[samp]), fences[samp]);
+    }
+  }
+  for (uint32_t samp = 0; samp < param.numSamples; ++samp)
+  {
+    device.waitForFences(fences[samp], true, 1000000);
   }
 }

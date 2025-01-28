@@ -57,4 +57,5 @@ private:
 
   VkBuffer indexBuffer;
   VmaAllocation indexAllocation;
+  friend class GPURenderer;
 };

@@ -96,7 +96,7 @@ void GPUScene::generate()
     };
     buildRangePointers[i] = &buildRanges[i];
   }
-  vk::CommandBufferAllocateInfo commandBufferAllocateInfo(cmdPool, vk::CommandBufferLevel::ePrimary, 10);
+  vk::CommandBufferAllocateInfo commandBufferAllocateInfo(*cmdPool, vk::CommandBufferLevel::ePrimary, 10);
   CommandBuffer cmdBuffer = std::move(CommandBuffers(device, commandBufferAllocateInfo).front());
   vk::FenceCreateInfo fenceCreateInfo;
   Fence fence = Fence(device, fenceCreateInfo);
@@ -104,8 +104,8 @@ void GPUScene::generate()
   cmdBuffer.buildAccelerationStructuresKHR(buildGeometries, buildRangePointers);
   cmdBuffer.end();
   vk::SubmitInfo submitInfo;
-  queue.submit(submitInfo, fence);
-  assert(device.waitForFences({fence}, true, 1000000) == VK_SUCCESS);
+  queue.submit(submitInfo, *fence);
+  assert(device.waitForFences({*fence}, true, 1000000) == vk::Result::eSuccess);
 }
 
 void GPUScene::createStorageBuffer(VkBuffer& buffer, VmaAllocation& alloc, void* data, size_t size)
