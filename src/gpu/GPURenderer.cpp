@@ -130,10 +130,8 @@ using namespace slang;
 
 void GPURenderer::createShaders()
 {
-  /*
   Slang::ComPtr<IGlobalSession> globalSession;
-  SlangGlobalSessionDesc desc = {};
-  createGlobalSession(&desc, globalSession.writeRef());
+  createGlobalSession(globalSession.writeRef());
   SessionDesc sessionDesc;
   TargetDesc targetDesc;
   targetDesc.format = SLANG_SPIRV;
@@ -143,29 +141,119 @@ void GPURenderer::createShaders()
   const char* searchPaths[] = {"res/shaders/"};
   sessionDesc.searchPaths = searchPaths;
   sessionDesc.searchPathCount = 1;
-  /* ... fill in `sessionDesc` ...
   Slang::ComPtr<ISession> session;
   globalSession->createSession(sessionDesc, session.writeRef());
 
   Slang::ComPtr<IBlob> diagnostics;
-  IModule* module = session->loadModule("MyShaders", diagnostics.writeRef());
+  IModule* raygenModule = session->loadModule("RayGen", diagnostics.writeRef());
   if (diagnostics)
   {
     std::cout << (const char*)diagnostics->getBufferPointer() << std::endl;
   }
-  Slang::ComPtr<IEntryPoint> computeEntryPoint;
-  module->findEntryPointByName("myComputeMain", computeEntryPoint.writeRef());
-  IComponentType* components[] = {module, computeEntryPoint};
+  Slang::ComPtr<IEntryPoint> rayGenEntry;
+  raygenModule->findEntryPointByName("rayGen", rayGenEntry.writeRef());
+
+  IModule* closestHitModule = session->loadModule("ClosestHit", diagnostics.writeRef());
+  if (diagnostics)
+  {
+    std::cout << (const char*)diagnostics->getBufferPointer() << std::endl;
+  }
+  Slang::ComPtr<IEntryPoint> closestHitEntry;
+  closestHitModule->findEntryPointByName("closestHit", closestHitEntry.writeRef());
+
+  IComponentType* components[] = {raygenModule, rayGenEntry, closestHitModule, closestHitEntry};
   Slang::ComPtr<IComponentType> program;
-  session->createCompositeComponentType(components, 2, program.writeRef());
+  session->createCompositeComponentType(components, 4, program.writeRef());
+
   Slang::ComPtr<IComponentType> linkedProgram;
-  Slang::ComPtr<ISlangBlob> diagnosticBlob;
-  program->link(linkedProgram.writeRef(), diagnosticBlob.writeRef());
-  int entryPointIndex = 0; // only one entry point
-  int targetIndex = 0;     // only one target
-  Slang::ComPtr<IBlob> kernelBlob;
-  linkedProgram->getEntryPointCode(entryPointIndex, targetIndex, kernelBlob.writeRef(), diagnostics.writeRef());
-  */
+  program->link(linkedProgram.writeRef(), diagnostics.writeRef());
+
+  Slang::ComPtr<IBlob> rayGenCode;
+  linkedProgram->getEntryPointCode(0, 0, rayGenCode.writeRef(), diagnostics.writeRef());
+
+  Slang::ComPtr<IBlob> closestHitCode;
+  linkedProgram->getEntryPointCode(1, 0, closestHitCode.writeRef(), diagnostics.writeRef());
+
+  rayGen =
+      ShaderModule(device, vk::ShaderModuleCreateInfo({}, rayGenCode->getBufferSize(), (const uint32_t*)rayGenCode->getBufferPointer()));
+
+  closestHit = ShaderModule(
+      device, vk::ShaderModuleCreateInfo({}, closestHitCode->getBufferSize(), (const uint32_t*)closestHitCode->getBufferPointer()));
+
+  std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+  std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups;
+
+  {
+    shaderStages.push_back(VkPipelineShaderStageCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+        .module = *rayGen,
+        .pName = "rayGen",
+        .pSpecializationInfo = nullptr,
+    });
+    shaderGroups.push_back(VkRayTracingShaderGroupCreateInfoKHR{
+        .sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR,
+        .pNext = nullptr,
+        .type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR,
+        .generalShader = static_cast<uint32_t>(shaderStages.size() - 1),
+        .closestHitShader = VK_SHADER_UNUSED_KHR,
+        .anyHitShader = VK_SHADER_UNUSED_KHR,
+        .intersectionShader = VK_SHADER_UNUSED_KHR,
+        .pShaderGroupCaptureReplayHandle = nullptr,
+    });
+  }
+  {
+    shaderStages.push_back(VkPipelineShaderStageCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,
+        .module = *closestHit,
+        .pName = "closestHit",
+        .pSpecializationInfo = nullptr,
+    });
+    uint32_t hitIndex = static_cast<uint32_t>(shaderStages.size() - 1);
+    uint32_t anyHitIndex = VK_SHADER_UNUSED_KHR;
+    uint32_t intersectionIndex = VK_SHADER_UNUSED_KHR;
+    // if (hitgroup.anyHitShader != nullptr)
+    //{
+    //   auto anyHit = hitgroup.anyHitShader.cast<AnyHitShader>();
+    //   shaderStages.add(VkPipelineShaderStageCreateInfo{
+    //       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    //       .pNext = nullptr,
+    //       .flags = 0,
+    //       .stage = VK_SHADER_STAGE_ANY_HIT_BIT_KHR,
+    //       .module = anyHit->getModuleHandle(),
+    //       .pName = anyHit->getEntryPointName(),
+    //       .pSpecializationInfo = nullptr,
+    //   });
+    // }
+    // if (hitgroup.intersectionShader != nullptr)
+    //{
+    //   auto intersect = hitgroup.intersectionShader.cast<IntersectionShader>();
+    //   shaderStages.add(VkPipelineShaderStageCreateInfo{
+    //       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    //       .pNext = nullptr,
+    //       .flags = 0,
+    //       .stage = VK_SHADER_STAGE_INTERSECTION_BIT_KHR,
+    //       .module = intersect->getModuleHandle(),
+    //       .pName = intersect->getEntryPointName(),
+    //       .pSpecializationInfo = nullptr,
+    //   });
+    // }
+    shaderGroups.push_back(VkRayTracingShaderGroupCreateInfoKHR{
+        .sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR,
+        .pNext = nullptr,
+        .type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR,
+        .generalShader = VK_SHADER_UNUSED_KHR,
+        .closestHitShader = hitIndex,
+        .anyHitShader = anyHitIndex,
+        .intersectionShader = intersectionIndex,
+        .pShaderGroupCaptureReplayHandle = nullptr,
+    });
+  }
 }
 
 void GPURenderer::render(Camera cam, RenderParameter param)
