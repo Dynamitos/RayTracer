@@ -7,6 +7,11 @@ void Model::transform(glm::mat4 matrix)
     pos = glm::vec3(matrix * glm::vec4(pos, 1));
   }
 
+  for (auto& nor : normals)
+  {
+    nor = glm::mat3(matrix) * nor;
+  }
+
   boundingBox.transform(matrix);
 
   for (int i = 0; i < indices.size(); i++)

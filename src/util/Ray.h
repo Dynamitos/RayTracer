@@ -3,6 +3,7 @@
 
 struct Payload
 {
+  glm::vec3 rnd01;
   glm::vec3 accumulatedRadiance = glm::vec3(0);
   glm::vec3 accumulatedMaterial = glm::vec3(1);
   uint32_t depth = 0;

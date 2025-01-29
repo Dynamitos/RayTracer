@@ -1,4 +1,7 @@
 target_sources(RayTracer
 	PRIVATE
 		GPURenderer.h
-		GPURenderer.cpp)
+		GPURenderer.cpp
+		GPUScene.h
+		GPUScene.cpp
+)

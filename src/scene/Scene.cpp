@@ -20,12 +20,13 @@ void Scene::addModels(std::vector<PModel> _models, glm::mat4 transform)
 
 void Scene::generate()
 {
-  std::vector<PNode> pendingNodes;
-  while (!models.empty())
+  // todo: clear everything
+  for (uint32_t i = 0; i < models.size(); ++i)
   {
-    auto& model = models.back();
+    auto& model = models[i];
     ModelReference ref = {
         .positionOffset = (uint32_t)positionPool.size(),
+        .numPositions = (uint32_t)model->positions.size(),
         .indicesOffset = (uint32_t)indicesPool.size(),
         .numIndices = (uint32_t)model->indices.size(),
     };
@@ -33,6 +34,7 @@ void Scene::generate()
     {
       positionPool.push_back(model->positions[i]);
       texCoordsPool.push_back(model->texCoords[i]);
+      normalsPool.push_back(model->normals[i]);
     }
     for (uint32_t i = 0; i < model->indices.size(); ++i)
     {
@@ -41,8 +43,78 @@ void Scene::generate()
       edgesPool.push_back(model->edges[i * 2 + 1]);
       faceNormalsPool.push_back(glm::normalize(model->faceNormals[i]));
     }
+    refs.push_back(ref);
+  }
+  createRayTracingHierarchy();
+}
+
+void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tmax) const noexcept
+{
+  IntersectionInfo info = generateIntersections(hierarchy, ray, tmin, tmax);
+
+  if (info.hitInfo.t < std::numeric_limits<float>::max())
+  {
+    // russian roulette ray termination
+    float p = std::max(std::max(info.brdf.albedo.x, info.brdf.albedo.y), info.brdf.albedo.z);
+
+    if (payload.depth >= 12)
+    {
+      return;
+    }
+    else if (payload.depth > 5)
+    {
+      if (payload.rnd01.z >= p)
+        return;
+      else
+        payload.accumulatedMaterial /= p;
+    }
+    // emissive
+    payload.accumulatedRadiance += payload.accumulatedMaterial * info.brdf.emissive * payload.emissive;
+    payload.accumulatedMaterial *= info.brdf.albedo;
+
+    // direct lighting
+    for (const auto& d : directionalLights)
+    {
+      // if there is an intersection, the light is occluded so no lighting
+      if (!testIntersection(hierarchy, Ray(info.hitInfo.position, -d.direction), 1e-4, 1e20))
+      {
+        payload.accumulatedRadiance += info.brdf.evaluate(info.hitInfo, -ray.direction, -d.direction, d.color);
+      }
+    }
+    for (const auto& p : pointLights)
+    {
+      glm::vec3 lightDir = p.position - info.hitInfo.position;
+      // if (!testIntersection(hierarchy, Ray(info.hitInfo.position, -lightDir), 1e-4, 1))
+      {
+        float d = glm::length(lightDir);
+        float illuminance = std::max(1 - d / p.attenuation, 0.0f);
+
+        payload.accumulatedRadiance += illuminance * info.brdf.evaluate(info.hitInfo, -ray.direction, lightDir, p.color);
+      }
+    }
+
+    // TODO: Next Event Estimation for mesh lights
+
+    // indirect lighting
+    float r1 = 2 * std::numbers::pi * payload.rnd01.x;
+    float r2 = payload.rnd01.y;
+    float r2s = sqrt(r2);
+    glm::vec3 w = info.hitInfo.normalLight;
+    glm::vec3 u = glm::normalize(glm::cross(std::abs(w.x) > 0.1 ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0), w));
+    glm::vec3 v = glm::cross(w, u);
+    ray = Ray(info.hitInfo.position, glm::normalize(u * cos(r1) * r2s + v * sin(r1) * r2s + w * sqrt(1 - r2)));
+    payload.emissive = 0;
+    payload.depth++;
+    traceRay(ray, payload, tmin, tmax);
+  }
+}
+
+void Scene::createRayTracingHierarchy()
+{
+  std::vector<PNode> pendingNodes;
+  for (const auto& [model, ref] : std::views::zip(models, refs))
+  {
     pendingNodes.push_back(std::make_unique<Node>(model->boundingBox, ref));
-    models.pop_back();
   }
   while (pendingNodes.size() > 1)
   {
@@ -77,69 +149,6 @@ void Scene::generate()
   hierarchy = std::move(pendingNodes[0]);
 }
 
-extern glm::vec3 rnd01;
-
-void Scene::traceRay(Ray ray, Payload& payload, const float tmin, const float tmax) const noexcept
-{
-  IntersectionInfo info = generateIntersections(hierarchy, ray, tmin, tmax);
-  
-  if (info.hitInfo.t < std::numeric_limits<float>::max())
-  {
-    // russian roulette ray termination
-    float p = std::max(std::max(info.brdf.albedo.x, info.brdf.albedo.y), info.brdf.albedo.z);
-
-    if (payload.depth >= 12)
-    {
-      return;
-    }
-    else if (payload.depth > 5)
-    {
-      if (rnd01.z >= p)
-        return;
-      else
-        payload.accumulatedMaterial /= p;
-    }
-    // emissive
-    payload.accumulatedRadiance += payload.accumulatedMaterial * info.brdf.emissive * payload.emissive;
-    payload.accumulatedMaterial *= info.brdf.albedo;
-
-    // direct lighting
-    for (const auto& d : directionalLights)
-    {
-      // if there is an intersection, the light is occluded so no lighting
-      if (!testIntersection(hierarchy, Ray(info.hitInfo.position, -d.direction), 1e-4, 1e20))
-      {
-        payload.accumulatedRadiance += info.brdf.evaluate(info.hitInfo, -ray.direction, -d.direction, d.color);
-      }
-    }
-    for (const auto& p : pointLights)
-    {
-      glm::vec3 lightDir = p.position - info.hitInfo.position;
-      // if (!testIntersection(hierarchy, Ray(info.hitInfo.position, -lightDir), 1e-4, 1))
-      {
-        float d = glm::length(lightDir);
-        float illuminance = std::max(1 - d / p.attenuation, 0.0f);
-
-        payload.accumulatedRadiance += illuminance * info.brdf.evaluate(info.hitInfo, -ray.direction, lightDir, p.color);
-      }
-    }
-
-    // TODO: Next Event Estimation for mesh lights
-
-    // indirect lighting
-    float r1 = 2 * std::numbers::pi * rnd01.x;
-    float r2 = rnd01.y;
-    float r2s = sqrt(r2);
-    glm::vec3 w = info.hitInfo.normalLight;
-    glm::vec3 u = glm::normalize(glm::cross(std::abs(w.x) > 0.1 ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0), w));
-    glm::vec3 v = glm::cross(w, u);
-    ray = Ray(info.hitInfo.position, glm::normalize(u * cos(r1) * r2s + v * sin(r1) * r2s + w * sqrt(1 - r2)));
-    payload.emissive = 0;
-    payload.depth++;
-    traceRay(ray, payload, tmin, tmax);
-  }
-}
-
 bool Scene::testIntersection(const PNode& currentNode, const Ray ray, const float tmin, float tmax) const noexcept
 {
   if (!currentNode->aabb.intersects(ray, tmin, tmax))
@@ -156,8 +165,7 @@ bool Scene::testIntersection(const PNode& currentNode, const Ray ray, const floa
   return leftResults || rightResults;
 }
 
-IntersectionInfo Scene::generateIntersections(const PNode& currentNode, const Ray ray, const float tmin,
-                                                           float tmax) const noexcept
+IntersectionInfo Scene::generateIntersections(const PNode& currentNode, const Ray ray, const float tmin, float tmax) const noexcept
 {
   if (!currentNode->aabb.intersects(ray, tmin, tmax))
   {
@@ -221,8 +229,7 @@ bool Scene::testModel(const ModelReference& reference, const Ray ray, const floa
 
   return false;
 }
-IntersectionInfo Scene::intersectModel(const ModelReference& reference, const Ray ray, const float tmin,
-                                                    float tmax) const noexcept
+IntersectionInfo Scene::intersectModel(const ModelReference& reference, const Ray ray, const float tmin, float tmax) const noexcept
 {
   IntersectionInfo intersection = {};
 

@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "gpu/GPUScene.h"
 #include "util/ModelLoader.h"
 #include <chrono>
 #include <iostream>
@@ -6,29 +7,34 @@
 
 Renderer::Renderer()
 {
-  bvh.addDirectionalLight(DirectionalLight{
+  scene = std::make_unique<Scene>();
+
+  scene->addDirectionalLight(DirectionalLight{
       .direction = glm::normalize(glm::vec3(-0.4f, -0.3f, -0.2f)),
       .color = glm::vec3(1, 1, 1),
   });
-  bvh.addModels(ModelLoader::loadModel("../res/models/cube.fbx"),
-                glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
-                          glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
-  bvh.generate();
+  scene->addModels(ModelLoader::loadModel("../res/models/cube.fbx"),
+                   glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+                             glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
+  scene->generate();
 }
 
 Renderer::~Renderer() {}
 
 void Renderer::startRender(Camera cam, RenderParameter params)
 {
-  threadPool.cancel();
-  pendingCancel = true;
-  if (worker.joinable())
+  //threadPool.cancel();
+  if (running)
+  {
+    running = false;
     worker.join();
-  pendingCancel = false;
+  }
+  sampleTimes.clear();
   image.clear();
   accumulator.clear();
   image.resize(params.width * params.height);
   accumulator.resize(params.width * params.height);
+  running = true;
   worker = std::thread(&Renderer::render, this, cam, params);
 }
 
@@ -39,13 +45,11 @@ glm::vec3 rand01(glm::uvec3 x)
   return glm::vec3(x) * (1.0f / float(0xffffffffU));
 }
 
-thread_local glm::vec3 rnd01;
-
 void Renderer::render(Camera camera, RenderParameter params)
 {
   for (int samp = 0; samp < params.numSamples; ++samp)
   {
-    if (pendingCancel)
+    if (!running)
       return;
     auto start = std::chrono::high_resolution_clock::now();
     Batch batch;
@@ -57,6 +61,7 @@ void Renderer::render(Camera camera, RenderParameter params)
             // #pragma omp parallel for
             for (int h = 0; h < params.height; ++h)
             {
+              Payload payload;
               Ray cam = Ray(camera.position, glm::normalize(camera.target - camera.position));
               glm::vec3 cx =
                             glm::normalize(glm::cross(cam.direction, abs(cam.direction.y) < 0.9 ? glm::vec3(0, 1, 0) : glm::vec3(0, 0, 1))),
@@ -67,8 +72,9 @@ void Renderer::render(Camera camera, RenderParameter params)
 
               //-- sample sensor
               glm::uvec2 pix = glm::uvec2(w, h);
-              rnd01 = rand01(glm::uvec3(pix, samp));
-              glm::vec2 rnd2 = 2.0f * glm::vec2(rnd01); // vvv tent filter sample
+
+              payload.rnd01 = rand01(glm::uvec3(pix, samp));
+              glm::vec2 rnd2 = 2.0f * glm::vec2(payload.rnd01); // vvv tent filter sample
               glm::vec2 tent =
                   glm::vec2(rnd2.x < 1 ? sqrt(rnd2.x) - 1 : 1 - sqrt(2 - rnd2.x), rnd2.y < 1 ? sqrt(rnd2.y) - 1 : 1 - sqrt(2 - rnd2.y));
               glm::vec2 s =
@@ -76,7 +82,7 @@ void Renderer::render(Camera camera, RenderParameter params)
                    0.5f) *
                   sdim;
               glm::vec3 spos = cam.origin + cx * s.x + cy * s.y, lc = cam.origin + cam.direction * 0.035f; // sample on 3d sensor plane
-              Ray r = Ray(lc, normalize(lc - spos));                  // construct ray
+              Ray r = Ray(lc, normalize(lc - spos));                                                       // construct ray
 
               //-- setup lens
               glm::vec3 lensP = lc;
@@ -84,27 +90,27 @@ void Renderer::render(Camera camera, RenderParameter params)
               glm::vec3 lensX = glm::cross(lensN, glm::vec3(0, 1, 0)); // the exact vector doesnt matter
               glm::vec3 lensY = glm::cross(lensN, lensX);
 
-              glm::vec3 lensSample = lensP + rnd01.x * camera.A * lensX + rnd01.y * camera.A * lensY;
+              glm::vec3 lensSample = lensP + payload.rnd01.x * camera.A * lensX + payload.rnd01.y * camera.A * lensY;
 
               glm::vec3 focalPoint = cam.origin + (camera.S_O + S_I) * cam.direction;
               float t = glm::dot(focalPoint - r.origin, lensN) / glm::dot(r.direction, lensN);
               glm::vec3 focus = r.origin + t * r.direction;
-              //r = Ray(lensSample, normalize(focus - lensSample)); // TODO: Fix lens
+              // r = Ray(lensSample, normalize(focus - lensSample)); // TODO: Fix lens
 
-              Payload payload;
-              bvh.traceRay(r, payload, 1e-4, 1e20);
+              scene->traceRay(r, payload, 1e-4, 1e20);
 
-              accumulator[w + h * params.width] += payload.accumulatedRadiance;
+              accumulator[w + h * params.width] += payload.accumulatedRadiance / float(params.numSamples);
             }
             co_return;
           }(w, samp));
     }
     threadPool.runBatch(std::move(batch));
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+    sampleTimes.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0f);
+    float resolver = float(params.numSamples) / float(samp+1);
     for (uint32_t i = 0; i < accumulator.size(); ++i)
     {
-      image[i] = glm::pow(glm::max((accumulator[i] / float(samp+1)), 0.0f), glm::vec3(0.45f));
+      image[i] = glm::pow(glm::max(accumulator[i] * resolver, 0.0f), glm::vec3(0.45f));
     }
   }
 }
