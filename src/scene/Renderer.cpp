@@ -89,7 +89,7 @@ void Renderer::render(Camera camera, RenderParameter params)
               glm::vec3 focalPoint = cam.origin + (camera.S_O + S_I) * cam.direction;
               float t = glm::dot(focalPoint - r.origin, lensN) / glm::dot(r.direction, lensN);
               glm::vec3 focus = r.origin + t * r.direction;
-              r = Ray(lensSample, normalize(focus - lensSample)); // TODO: Fix lens
+              //r = Ray(lensSample, normalize(focus - lensSample)); // TODO: Fix lens
 
               Payload payload;
               bvh.traceRay(r, payload, 1e-4, 1e20);
