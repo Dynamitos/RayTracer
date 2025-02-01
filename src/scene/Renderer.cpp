@@ -13,7 +13,7 @@ Renderer::Renderer()
       .direction = glm::normalize(glm::vec3(-0.4f, -0.3f, -0.2f)),
       .color = glm::vec3(1, 1, 1),
   });
-  scene->addModels(ModelLoader::loadModel("../res/models/cube.fbx"),
+  scene->addModels(ModelLoader::loadModel("../res/models/stanford-bunny.obj"),
                    glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
                              glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
   scene->generate();
