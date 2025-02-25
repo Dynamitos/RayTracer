@@ -3,7 +3,7 @@
 #include "scene/Renderer.h"
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
-#include <vma/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 
 using namespace vk::raii;
 
@@ -11,7 +11,12 @@ struct GPURenderer : public Renderer
 {
 public:
   GPURenderer();
-  virtual ~GPURenderer();
+  virtual ~GPURenderer();  
+  virtual void addPointLight(PointLight point) override { scene->addPointLight(point); }
+  virtual void addDirectionalLight(DirectionalLight dir) override { scene->addDirectionalLight(dir); }
+  virtual void addModel(PModel model, glm::mat4 transform) override { scene->addModel(std::move(model), transform); }
+  virtual void addModels(std::vector<PModel> models, glm::mat4 transform) override { scene->addModels(std::move(models), transform); }
+  virtual void generate() override { scene->generate(); }
   virtual void render(Camera cam, RenderParameter param) override;
 
 private:
@@ -35,9 +40,10 @@ private:
     uint32_t numPointLights;
   };
   void createDevice();
-  void createCommands();
   void createDescriptors();
   void createPipeline();
+
+  GPUScene* scene;
 
   Context context;
   Instance instance = nullptr;

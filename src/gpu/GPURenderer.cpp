@@ -1,5 +1,5 @@
 #include "GPURenderer.h"
-#include "util/ModelLoader.h"
+#include "gpu/GPUScene.h"
 #include "vulkan/vulkan_enums.hpp"
 #include "vulkan/vulkan_handles.hpp"
 #include "vulkan/vulkan_raii.hpp"
@@ -12,7 +12,7 @@
 GPURenderer::GPURenderer()
 {
   createDevice();
-  createCommands();
+  scene = new GPUScene(device, allocator, cmdPool, queue);
   createDescriptors();
   createPipeline();
 }
@@ -79,10 +79,6 @@ void GPURenderer::createDevice()
   };
 
   vmaCreateAllocator(&allocatorCreateInfo, &allocator);
-}
-
-void GPURenderer::createCommands()
-{
   vk::CommandPoolCreateInfo commandPoolCreateInfo({}, computeQueueFamily);
   cmdPool = CommandPool(device, commandPoolCreateInfo);
 }
@@ -154,7 +150,7 @@ template <typename T> constexpr T align(T size, T alignment) { return (size + al
 void GPURenderer::createPipeline()
 {
   Slang::ComPtr<IGlobalSession> globalSession;
-  createGlobalSession(globalSession.writeRef());
+  //createGlobalSession(globalSession.writeRef());
   TargetDesc targetDesc = {
       .format = SLANG_SPIRV,
       .profile = globalSession->findProfile("glsl_450"),
@@ -222,12 +218,12 @@ void GPURenderer::createPipeline()
   std::vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroups;
 
   {
-    shaderStages.push_back(vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eRaygenKHR, rayGen, "main"));
+    shaderStages.push_back(vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eRaygenKHR, *rayGen, "main"));
     shaderGroups.push_back(vk::RayTracingShaderGroupCreateInfoKHR(vk::RayTracingShaderGroupTypeKHR::eGeneral, shaderStages.size() - 1,
                                                                   vk::ShaderUnusedKHR, vk::ShaderUnusedKHR, vk::ShaderUnusedKHR));
   }
   {
-    shaderStages.push_back(vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eClosestHitKHR, closestHit, "main"));
+    shaderStages.push_back(vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eClosestHitKHR, *closestHit, "main"));
 
     uint32_t hitIndex = static_cast<uint32_t>(shaderStages.size() - 1);
     uint32_t anyHitIndex = VK_SHADER_UNUSED_KHR;
@@ -262,12 +258,12 @@ void GPURenderer::createPipeline()
                                                                   hitIndex, anyHitIndex, intersectionIndex));
   }
   {
-    shaderStages.push_back(vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eMissKHR, miss, "main"));
+    shaderStages.push_back(vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eMissKHR, *miss, "main"));
     shaderGroups.push_back(vk::RayTracingShaderGroupCreateInfoKHR(vk::RayTracingShaderGroupTypeKHR::eGeneral, shaderStages.size() - 1,
                                                                   vk::ShaderUnusedKHR, vk::ShaderUnusedKHR, vk::ShaderUnusedKHR));
   }
   pipeline = device.createRayTracingPipelineKHR(
-      nullptr, nullptr, vk::RayTracingPipelineCreateInfoKHR({}, shaderStages, shaderGroups, 12, nullptr, nullptr, nullptr, pipelineLayout));
+      nullptr, nullptr, vk::RayTracingPipelineCreateInfoKHR({}, shaderStages, shaderGroups, 12, nullptr, nullptr, nullptr, *pipelineLayout));
 
   const uint32_t handleSize = rayTracingProperties.shaderGroupHandleSize;
   const uint32_t handleSizeAligned = align(rayTracingProperties.shaderGroupHandleSize, rayTracingProperties.shaderGroupHandleAlignment);
@@ -355,9 +351,9 @@ void GPURenderer::uploadToGPU(Buffer& buffer, void* data, size_t size)
 
   vmaCopyMemoryToAllocation(allocator, data, stagingAllocation, 0, size);
   CommandBuffer copyCmd =
-      std::move(device.allocateCommandBuffers(vk::CommandBufferAllocateInfo(cmdPool, vk::CommandBufferLevel::ePrimary, 1)).front());
+      std::move(device.allocateCommandBuffers(vk::CommandBufferAllocateInfo(*cmdPool, vk::CommandBufferLevel::ePrimary, 1)).front());
   copyCmd.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-  copyCmd.copyBuffer(stagingBuffer, buffer, vk::BufferCopy(0, 0, size));
+  copyCmd.copyBuffer(*stagingBuffer, *buffer, vk::BufferCopy(0, 0, size));
   copyCmd.end();
   queue.submit(vk::SubmitInfo({}, {}, *copyCmd, {}));
   device.waitIdle();
@@ -466,62 +462,62 @@ void GPURenderer::render(Camera cam, RenderParameter param)
   std::list<vk::DescriptorImageInfo> images;
   uint32_t bindingCounter = 0;
   {
-    buffers.push_back(vk::DescriptorBufferInfo(cameraBuffer));
+    buffers.push_back(vk::DescriptorBufferInfo(*cameraBuffer));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr,
                                             &buffers.back(), nullptr));
   }
   {
-    accel.push_back(vk::WriteDescriptorSetAccelerationStructureKHR(*((GPUScene*)scene.get())->accelerationStructure));
+    accel.push_back(vk::WriteDescriptorSetAccelerationStructureKHR(*scene->accelerationStructure));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eAccelerationStructureKHR, nullptr,
                                             nullptr, nullptr, &accel.back()));
   }
   {
-    images.push_back(vk::DescriptorImageInfo({}, radianceView, vk::ImageLayout::eGeneral));
+    images.push_back(vk::DescriptorImageInfo({}, *radianceView, vk::ImageLayout::eGeneral));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageImage, &images.back(),
                                             nullptr, nullptr));
   }
   {
-    images.push_back(vk::DescriptorImageInfo({}, imageView, vk::ImageLayout::eGeneral));
+    images.push_back(vk::DescriptorImageInfo({}, *imageView, vk::ImageLayout::eGeneral));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageImage, &images.back(),
                                             nullptr, nullptr));
   }
   {
-    buffers.push_back(vk::DescriptorBufferInfo(((GPUScene*)scene.get())->modelBuffer));
+    buffers.push_back(vk::DescriptorBufferInfo(*scene->modelBuffer));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
                                             &buffers.back(), nullptr));
   }
   {
-    buffers.push_back(vk::DescriptorBufferInfo(((GPUScene*)scene.get())->materialBuffer));
+    buffers.push_back(vk::DescriptorBufferInfo(*scene->materialBuffer));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
                                             &buffers.back(), nullptr));
   }
   {
-    buffers.push_back(vk::DescriptorBufferInfo(((GPUScene*)scene.get())->positionBuffer));
+    buffers.push_back(vk::DescriptorBufferInfo(*scene->positionBuffer));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
                                             &buffers.back(), nullptr));
   }
   {
-    buffers.push_back(vk::DescriptorBufferInfo(((GPUScene*)scene.get())->texCoordsBuffer));
+    buffers.push_back(vk::DescriptorBufferInfo(*scene->texCoordsBuffer));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
                                             &buffers.back(), nullptr));
   }
   {
-    buffers.push_back(vk::DescriptorBufferInfo(((GPUScene*)scene.get())->normalsBuffer));
+    buffers.push_back(vk::DescriptorBufferInfo(*scene->normalsBuffer));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
                                             &buffers.back(), nullptr));
   }
   {
-    buffers.push_back(vk::DescriptorBufferInfo(((GPUScene*)scene.get())->directionalLightBuffer));
+    buffers.push_back(vk::DescriptorBufferInfo(*scene->directionalLightBuffer));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
                                             &buffers.back(), nullptr));
   }
   {
-    buffers.push_back(vk::DescriptorBufferInfo(((GPUScene*)scene.get())->pointLightBuffer));
+    buffers.push_back(vk::DescriptorBufferInfo(*scene->pointLightBuffer));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
                                             &buffers.back(), nullptr));
   }
   {
-    buffers.push_back(vk::DescriptorBufferInfo(((GPUScene*)scene.get())->indexBuffer));
+    buffers.push_back(vk::DescriptorBufferInfo(*scene->indexBuffer));
     writes.push_back(vk::WriteDescriptorSet(*descriptorSet, bindingCounter++, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
                                             &buffers.back(), nullptr));
   }
@@ -535,14 +531,14 @@ void GPURenderer::render(Camera cam, RenderParameter param)
     auto& cmd = cmdBuffers[samp];
     cmd.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
     cmd.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, *pipeline);
-    cmd.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, pipelineLayout, 0, *descriptorSet, {});
+    cmd.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, 0, *descriptorSet, {});
     std::vector<SampleParams> sampleParams = {SampleParams{
         .pass = samp,
         .samplesPerPixel = param.numSamples,
         .numDirectionalLights = (uint32_t)scene->directionalLights.size(),
         .numPointLights = (uint32_t)scene->pointLights.size(),
     }};
-    cmd.pushConstants<SampleParams>(pipelineLayout, vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR, 0,
+    cmd.pushConstants<SampleParams>(*pipelineLayout, vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR, 0,
                                     sampleParams);
     cmd.traceRaysKHR(rayGenAddr, closestHitAddr, missAddr, {}, param.width, param.height, 1);
     cmd.end();

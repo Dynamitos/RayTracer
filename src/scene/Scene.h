@@ -1,9 +1,6 @@
 #pragma once
-#include "AABB.h"
 #include "util/Model.h"
-#include "util/Ray.h"
 #include <glm/glm.hpp>
-#include <optional>
 #include <vector>
 
 struct ModelReference
@@ -33,13 +30,16 @@ struct DirectionalLight
 class Scene
 {
 public:
+  Scene(){}
+  virtual ~Scene(){}
   void addPointLight(PointLight point) { pointLights.push_back(point); }
   void addDirectionalLight(DirectionalLight dir) { directionalLights.push_back(dir); }
   void addModel(PModel model, glm::mat4 transform);
   void addModels(std::vector<PModel> models, glm::mat4 transform);
   void generate();
 
-  void traceRay(Ray ray, Payload& payload, const float tmin, const float tmax) const noexcept;
+  constexpr uint32_t getNumDirLights() const { return (uint)directionalLights.size(); }
+  constexpr uint32_t getNumPointLights() const { return (uint)pointLights.size(); }
 
 protected:
   std::vector<ModelReference> refs;
@@ -53,25 +53,9 @@ protected:
   std::vector<PointLight> pointLights;
   std::vector<DirectionalLight> directionalLights;
 
-  DECLARE_REF(Node)
-  struct Node
-  {
-    PNode left;
-    PNode right;
-    AABB aabb;
-    ModelReference model;
-    Node(AABB aabb) : aabb(aabb) {}
-    Node(AABB aabb, ModelReference model) : aabb(aabb), model(model) {}
-  };
-  PNode hierarchy;
   std::vector<PModel> models;
 
-  virtual void createRayTracingHierarchy();
+  virtual void createRayTracingHierarchy() = 0;
 
-  // tests if a ray intersects any geometry, no hit information, for shadow rays
-  bool testIntersection(const PNode& currentNode, const Ray ray, const float tmin, const float tmax) const noexcept;
-  IntersectionInfo generateIntersections(const PNode& currentNode, const Ray ray, const float tmin, const float tmax) const noexcept;
-  bool testModel(const ModelReference& reference, const Ray ray, const float tmin, const float tmax) const noexcept;
-  IntersectionInfo intersectModel(const ModelReference& reference, const Ray ray, const float tmin, const float tmax) const noexcept;
   friend class GPURenderer;
 };

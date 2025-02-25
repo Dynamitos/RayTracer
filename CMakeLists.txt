@@ -19,6 +19,9 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(Ktx CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_library(APPLE_FWK_FOUNDATION Foundation REQUIRED)
+find_library(APPLE_FWK_QUARTZ_CORE QuartzCore REQUIRED)
+find_library(APPLE_FWK_METAL Metal REQUIRED)
 
 add_executable(RayTracer "")
 target_include_directories(RayTracer PUBLIC src/)
@@ -36,5 +39,14 @@ target_include_directories(RayTracer PUBLIC ${VCPKG_INSTALLED_DIR}/x64-windows/i
 target_link_libraries(RayTracer PUBLIC ${VCPKG_INSTALLED_DIR}/x64-windows/lib/slang.lib)
 elseif(APPLE)
 target_include_directories(RayTracer PUBLIC ${VCPKG_INSTALLED_DIR}/arm64-osx/include)
+target_include_directories(RayTracer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/external/metal-cpp)
+SET(CMAKE_OSX_DEPLOYMENT_TARGET 15.0)
+
+target_link_libraries(RayTracer PUBLIC
+  ${APPLE_FWK_FOUNDATION}
+  ${APPLE_FWK_QUARTZ_CORE}
+  ${APPLE_FWK_METAL}
+)
+
 endif()
 add_subdirectory(src/)
