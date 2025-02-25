@@ -16,6 +16,9 @@ int main()
   scene->addModels(ModelLoader::loadModel("../../res/models/cube.fbx"),
                   glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
                             glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
+    scene->addModels(ModelLoader::loadModel("../../res/models/cube.fbx"),
+                    glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+                              glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
   scene->generate();
   Window window(1920, 1080);
   Camera camera = Camera{

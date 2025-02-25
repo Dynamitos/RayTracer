@@ -211,7 +211,7 @@ kernel void computeKernel(
         if (payload.depth > 5)
         {
             if (payload.rnd01.z >= p)
-                return;
+                break;
             else
                 payload.accumulatedMaterial /= p;
         }

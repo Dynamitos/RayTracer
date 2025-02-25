@@ -40,10 +40,10 @@ void MetalScene::createRayTracingHierarchy()
         MTL::AccelerationStructureTriangleGeometryDescriptor* descriptor = MTL::AccelerationStructureTriangleGeometryDescriptor::descriptor();
         descriptor->setTriangleCount(refs[i].numIndices / 3);
         descriptor->setIndexBuffer(indicesBuffer);
-        descriptor->setIndexBufferOffset(refs[i].indicesOffset);
-        descriptor->setVertexBufferOffset(refs[i].positionOffset);
-        descriptor->setVertexBuffer(positionBuffer);
+        descriptor->setIndexBufferOffset(refs[i].indicesOffset * sizeof(glm::uvec3));
         descriptor->setIndexType(MTL::IndexTypeUInt32);
+        descriptor->setVertexBuffer(positionBuffer);
+        descriptor->setVertexBufferOffset(refs[i].positionOffset * sizeof(glm::vec3));
         
         MTL::PrimitiveAccelerationStructureDescriptor* primitiveDescriptor = MTL::PrimitiveAccelerationStructureDescriptor::descriptor();
         primitiveDescriptor->setGeometryDescriptors(NS::Array::array(descriptor));
@@ -85,11 +85,9 @@ void MetalScene::createRayTracingHierarchy()
     accelDesc->setInstanceDescriptorBuffer(instanceBuffer);
     accelDesc->setInstanceCount(refs.size());
     
-    accelerationStructure = device->newAccelerationStructure(accelDesc);
-    accelerationStructure->setLabel(NS::String::string("InstanceAccelerationStructure", NS::ASCIIStringEncoding));
-    std::cout << accelerationStructure->debugDescription()->cString(NS::ASCIIStringEncoding) << std::endl;
-    /*MTL::AccelerationStructureSizes accelSizes = device->accelerationStructureSizes(accelDesc);
+    MTL::AccelerationStructureSizes accelSizes = device->accelerationStructureSizes(accelDesc);
     MTL::AccelerationStructure* tempStructure = device->newAccelerationStructure(accelSizes.accelerationStructureSize);
+    tempStructure->setLabel(NS::String::string("Temporary AS", NS::ASCIIStringEncoding));
     MTL::Buffer* scratchBuffer = device->newBuffer(accelSizes.buildScratchBufferSize, MTL::StorageModeManaged);
     MTL::CommandBuffer* cmdBuffer = queue->commandBuffer();
     MTL::AccelerationStructureCommandEncoder* encoder = cmdBuffer->accelerationStructureCommandEncoder();
@@ -101,10 +99,11 @@ void MetalScene::createRayTracingHierarchy()
     cmdBuffer->waitUntilCompleted();
     uint compactedSize = *(uint*)compactedBuffer->contents();
     accelerationStructure = device->newAccelerationStructure(compactedSize);
+    accelerationStructure->setLabel(NS::String::string("Instance AS", NS::ASCIIStringEncoding));
     cmdBuffer = queue->commandBuffer();
     encoder = cmdBuffer->accelerationStructureCommandEncoder();
     encoder->copyAndCompactAccelerationStructure(tempStructure, accelerationStructure);
     encoder->endEncoding();
     cmdBuffer->commit();
-    cmdBuffer->waitUntilCompleted();*/
+    cmdBuffer->waitUntilCompleted();
 }
