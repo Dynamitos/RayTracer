@@ -1,11 +1,11 @@
-#include "metal/MetalRenderer.h"
 #include "scene/Renderer.h"
 #include "util/ModelLoader.h"
+#include "metal/MetalRenderer.h"
 #include <imgui.h>
 
 int main()
 {
-  std::unique_ptr<Renderer> renderer = std::make_unique<MetalRenderer>();
+    std::unique_ptr<Renderer> renderer = std::make_unique<MetalRenderer>();
 
   renderer->addDirectionalLight(DirectionalLight{
       .direction = glm::normalize(glm::vec3(-0.4f, -0.3f, -0.2f)),

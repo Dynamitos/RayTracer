@@ -4,5 +4,4 @@ target_sources(RayTracer
         MetalRenderer.mm
         MetalScene.h
         MetalScene.mm
-        Compute.metal
-        PrivateImpl.mm)
+        Compute.metal)

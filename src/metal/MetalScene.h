@@ -1,28 +1,29 @@
 #pragma once
 #include "scene/Scene.h"
-#include <Foundation/Foundation.hpp>
-#include <Metal/Metal.hpp>
-#include <QuartzCore/QuartzCore.hpp>
+#include <Metal/Metal.h>
+#include <QuartzCore/QuartzCore.h>
 
 class MetalScene : public Scene
 {
 public:
-    MetalScene(MTL::Device* device, MTL::CommandQueue* queue);
+    MetalScene(id<MTLDevice> device, id<MTLCommandQueue> queue);
     virtual ~MetalScene();
 
     virtual void createRayTracingHierarchy() override;
+    
+    id<MTLAccelerationStructure> newAccelerationStructureWithDescriptor(MTLAccelerationStructureDescriptor* descriptor);
 
-    MTL::Device* device;
-    MTL::CommandQueue* queue;
+    id<MTLDevice> device;
+    id<MTLCommandQueue> queue;
 
-    MTL::Buffer* indicesBuffer;
-    MTL::Buffer* positionBuffer;
-    MTL::Buffer* texCoordsBuffer;
-    MTL::Buffer* normalBuffer;
-    MTL::Buffer* modelRefsBuffer;
-    MTL::Buffer* directionalLightBuffer;
-    MTL::Buffer* pointLightBuffer;
-    MTL::Buffer* instanceBuffer;
+    id<MTLBuffer> indicesBuffer;
+    id<MTLBuffer> positionBuffer;
+    id<MTLBuffer> texCoordsBuffer;
+    id<MTLBuffer> normalBuffer;
+    id<MTLBuffer> modelRefsBuffer;
+    id<MTLBuffer> directionalLightBuffer;
+    id<MTLBuffer> pointLightBuffer;
+    id<MTLBuffer> instanceBuffer;
 
-    MTL::AccelerationStructure* accelerationStructure;
+    id<MTLAccelerationStructure> accelerationStructure;
 };

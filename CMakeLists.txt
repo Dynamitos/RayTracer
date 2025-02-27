@@ -36,9 +36,7 @@ target_include_directories(RayTracer PUBLIC ${VCPKG_INSTALLED_DIR}/x64-windows/i
 target_link_libraries(RayTracer PUBLIC ${VCPKG_INSTALLED_DIR}/x64-windows/lib/slang.lib)
 elseif(APPLE)
 target_include_directories(RayTracer PUBLIC ${VCPKG_INSTALLED_DIR}/arm64-osx/include)
-target_include_directories(RayTracer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/external/metal-cpp)
-SET(CMAKE_OSX_DEPLOYMENT_TARGET 15.3.1)
-
+SET(CMAKE_OSX_DEPLOYMENT_TARGET 15.0)
 target_link_libraries(RayTracer PUBLIC
   "-framework Metal"
   "-framework MetalKit"
