@@ -1,8 +1,8 @@
 target_sources(RayTracer
     PRIVATE
         MetalRenderer.h
-        MetalRenderer.cpp
+        MetalRenderer.mm
         MetalScene.h
-        MetalScene.cpp
+        MetalScene.mm
         Compute.metal
         PrivateImpl.mm)

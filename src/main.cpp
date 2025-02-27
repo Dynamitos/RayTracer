@@ -1,26 +1,24 @@
-#include "scene/Renderer.h"
 #include "metal/MetalRenderer.h"
-#include "window/Window.h"
+#include "scene/Renderer.h"
 #include "util/ModelLoader.h"
 #include <imgui.h>
 
 int main()
 {
-  std::unique_ptr<Renderer> scene = std::make_unique<MetalRenderer>();
+  std::unique_ptr<Renderer> renderer = std::make_unique<MetalRenderer>();
 
-  scene->addDirectionalLight(DirectionalLight{
-    .direction = glm::normalize(glm::vec3(-0.4f, -0.3f, -0.2f)),
-    .color = glm::vec3(1, 1, 1),
+  renderer->addDirectionalLight(DirectionalLight{
+      .direction = glm::normalize(glm::vec3(-0.4f, -0.3f, -0.2f)),
+      .color = glm::vec3(1, 1, 1),
   });
-    scene->addPointLight(PointLight{});
-  scene->addModels(ModelLoader::loadModel("../../res/models/cube.fbx"),
-                  glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
-                            glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
-    scene->addModels(ModelLoader::loadModel("../../res/models/cube.fbx"),
-                    glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
-                              glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
-  scene->generate();
-  Window window(1920, 1080);
+  renderer->addPointLight(PointLight{});
+  renderer->addModels(ModelLoader::loadModel("../../res/models/cube.fbx"),
+                      glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+                                glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
+  renderer->addModels(ModelLoader::loadModel("../../res/models/cube.fbx"),
+                      glm::mat4(glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+                                glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)));
+  renderer->generate();
   Camera camera = Camera{
       .position = glm::vec3(5, 1, 2),
       .target = glm::vec3(0, 0, 0),
@@ -31,11 +29,11 @@ int main()
       .height = 1080,
       .numSamples = 10000,
   };
-  scene->startRender(camera, render);
+  renderer->startRender(camera, render);
 
   while (true)
   {
-    window.beginFrame();
+    renderer->beginFrame();
     ImGui::Text("Camera Parameters");
     ImGui::InputFloat3("Position", &camera.position.x);
     ImGui::InputFloat3("Target", &camera.target.x);
@@ -47,13 +45,14 @@ int main()
     ImGui::InputInt("Samples", (int*)&render.numSamples);
     if (ImGui::Button("Render"))
     {
-      scene->startRender(camera, render);
+      renderer->startRender(camera, render);
     }
     ImGui::Text("Render Stats");
-    ImGui::Text("Last Sample Time:    %.3f ms", scene->getLastSampleTime());
-    ImGui::Text("Average Sample Time: %.3f ms", scene->getAverageSampleTime());
-    ImGui::PlotLines("Sample Times", scene->getSampleTimes().data(), scene->getSampleTimes().size(), 0, 0, FLT_MAX, FLT_MAX, ImVec2(0, 40));
-    window.update(scene->getImage());
+    ImGui::Text("Last Sample Time:    %.3f ms", renderer->getLastSampleTime());
+    ImGui::Text("Average Sample Time: %.3f ms", renderer->getAverageSampleTime());
+    ImGui::PlotLines("Sample Times", renderer->getSampleTimes().data(), renderer->getSampleTimes().size(), 0, 0, FLT_MAX, FLT_MAX,
+                     ImVec2(0, 40));
+    renderer->update();
   }
   return 0;
 }

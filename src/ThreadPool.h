@@ -4,7 +4,20 @@
 #include <list>
 #include <thread>
 #include "Minimal.h"
+#include <coroutine>
 
+struct Task
+{
+  struct promise_type
+  {
+    Task get_return_object() { return {std::coroutine_handle<promise_type>::from_promise(*this)}; }
+    std::suspend_always initial_suspend() noexcept { return {}; }
+    std::suspend_never final_suspend() noexcept { return {}; }
+    void return_void() {}
+    void unhandled_exception() {}
+  };
+  std::coroutine_handle<promise_type> handle;
+};
 struct Batch
 {
     std::list<Task> jobs;

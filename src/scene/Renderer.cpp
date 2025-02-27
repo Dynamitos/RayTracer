@@ -16,8 +16,6 @@ void Renderer::startRender(Camera cam, RenderParameter params)
     worker.join();
   }
   sampleTimes.clear();
-  image.clear();
-  image.resize(params.width * params.height);
   running = true;
   worker = std::thread(&Renderer::render, this, cam, params);
 }

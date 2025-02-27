@@ -11,13 +11,16 @@ struct GPURenderer : public Renderer
 {
 public:
   GPURenderer();
-  virtual ~GPURenderer();  
+  virtual ~GPURenderer();
   virtual void addPointLight(PointLight point) override { scene->addPointLight(point); }
   virtual void addDirectionalLight(DirectionalLight dir) override { scene->addDirectionalLight(dir); }
   virtual void addModel(PModel model, glm::mat4 transform) override { scene->addModel(std::move(model), transform); }
   virtual void addModels(std::vector<PModel> models, glm::mat4 transform) override { scene->addModels(std::move(models), transform); }
   virtual void generate() override { scene->generate(); }
   virtual void render(Camera cam, RenderParameter param) override;
+
+  virtual void beginFrame() override;
+  virtual void update() override;
 
 private:
   struct GPUCamera

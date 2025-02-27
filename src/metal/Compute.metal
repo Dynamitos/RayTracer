@@ -133,8 +133,8 @@ kernel void computeKernel(
     constant PointLight* pointLights [[buffer(6)]],
     constant MTLAccelerationStructureInstanceDescriptor* instances [[buffer(7)]],
     instance_acceleration_structure accelerationStructure [[buffer(8)]],
-    device packed_float3* accumulator [[buffer(9)]],
-    device packed_float3* image [[buffer(10)]]
+    texture2d<float, access::read_write> accumulator [[texture(0)]],
+    texture2d<float, access::read_write> image [[texture(1)]]
 )
 {
     Payload payload;
@@ -267,6 +267,8 @@ kernel void computeKernel(
         payload.depth++;
     }
     float resolver = float(sample.samplesPerPixel) / float(sample.pass+1);
-    accumulator[threadId.x + threadId.y * camera.width] += payload.accumulatedRadiance / float(sample.samplesPerPixel);
-    image[threadId.x + threadId.y * camera.width] = pow(max(accumulator[threadId.x + threadId.y * camera.width] * resolver, 0), float3(0.45f));
+    float4 previous = accumulator.read(threadId);
+    float4 result = previous + float4(payload.accumulatedRadiance / float(sample.samplesPerPixel), 0);
+    accumulator.write(result, threadId);
+    image.write(pow(max(result * resolver, 0), float4(0.45f)), threadId);
 }
