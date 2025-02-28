@@ -45,6 +45,7 @@ int main()
     ImGui::InputInt("Samples", (int*)&render.numSamples);
     if (ImGui::Button("Render"))
     {
+      std::cout << "Test" << std::endl;
       renderer->startRender(camera, render);
     }
     ImGui::Text("Render Stats");

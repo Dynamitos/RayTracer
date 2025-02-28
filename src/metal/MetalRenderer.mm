@@ -14,6 +14,7 @@ id<CAMetalDrawable> drawable;
 id<MTLDevice> device;
 id<MTLLibrary> library;
 id<MTLCommandQueue> queue;
+id<MTLCommandQueue> renderQueue;
 id<MTLFunction> function;
 id<MTLComputePipelineState> computePipeline;
 id<MTLTexture> accumulator;
@@ -22,15 +23,14 @@ id<MTLTexture> resultTexture;
 MTLRenderPassDescriptor* renderPass;
 id<MTLRenderCommandEncoder> renderEncoder;
 id<MTLCommandBuffer> renderCmd;
+id<MTLRenderPipelineState> pipelineState;
 
+static void glfw_error_callback(int error, const char* description)
+{
+    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
 MetalRenderer::MetalRenderer()
 {
-    IMGUI_CHECKVERSION();
-      ImGui::CreateContext();
-      ImGuiIO& io = ImGui::GetIO();
-      io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-      io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
-
   width = 1920;
   height = 1080;
   device = MTLCreateSystemDefaultDevice();
@@ -38,6 +38,7 @@ MetalRenderer::MetalRenderer()
   library = [device newDefaultLibrary];
 
   queue = [device newCommandQueue];
+    renderQueue = [device newCommandQueue];
 
   scene = new MetalScene(device, queue);
 
@@ -45,32 +46,39 @@ MetalRenderer::MetalRenderer()
 
   NSError* error;
     computePipeline = [device newComputePipelineStateWithFunction:function error:&error];
-
-    glfwInit();
+  
+  IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+  glfwSetErrorCallback(glfw_error_callback);
+  glfwInit();
   float xscale = 1, yscale = 1;
   glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   handle = glfwCreateWindow(width / xscale, height / yscale, "RayTracer", nullptr, nullptr);
 
-  int w, h;
-  glfwGetFramebufferSize(handle, &w, &h);
-  framebufferWidth = width;
-  framebufferHeight = height;
 
   ImGui_ImplGlfw_InitForOpenGL(handle, false);
-  ImGui_ImplMetal_Init((__bridge id)device);
-
+  ImGui_ImplMetal_Init(device);
+  
+  NSWindow* cocoaWindow = glfwGetCocoaWindow(handle);
   metalLayer = [CAMetalLayer layer];
   metalLayer.device = device;
   metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-  metalLayer.drawableSize = CGSizeMake(w, h);
-  metalLayer.framebufferOnly = true;
-  NSWindow* cocoaWindow = glfwGetCocoaWindow(handle);
     [[cocoaWindow contentView] setLayer:metalLayer];
-  [[cocoaWindow contentView] setWantsLayer:YES];
-  [[cocoaWindow contentView] setNeedsLayout:YES];
- 
+    [[cocoaWindow contentView] setWantsLayer:true];
     renderPass = [[MTLRenderPassDescriptor alloc] init];
+    
+    MTLRenderPipelineDescriptor *renderDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
+
+    renderDescriptor.vertexFunction = [library newFunctionWithName:@"copyVertex"];
+    renderDescriptor.fragmentFunction = [library newFunctionWithName:@"copyFragment"];
+
+    renderDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+
+    pipelineState = [device newRenderPipelineStateWithDescriptor:renderDescriptor error:&error];
 }
 
 MetalRenderer::~MetalRenderer() {}
@@ -83,16 +91,28 @@ void MetalRenderer::generate() { scene->generate(); }
 
 void MetalRenderer::beginFrame()
 {
-  drawable = [metalLayer nextDrawable];
-  renderCmd = [queue commandBuffer];
+    glfwPollEvents();
+  int w, h;
+  glfwGetFramebufferSize(handle, &w, &h);
+  framebufferWidth = width;
+  framebufferHeight = height;
+  metalLayer.drawableSize = CGSizeMake(framebufferWidth, framebufferHeight);
+drawable = [metalLayer nextDrawable];
+    renderCmd = [renderQueue commandBuffer];
     renderPass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
     renderPass.colorAttachments[0].texture = drawable.texture;
     renderPass.colorAttachments[0].loadAction = MTLLoadActionClear;
     renderPass.colorAttachments[0].storeAction = MTLStoreActionStore;
-    renderEncoder = [renderCmd renderCommandEncoderWithDescriptor:renderPass];
     ImGui_ImplMetal_NewFrame(renderPass);
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    renderEncoder = [renderCmd renderCommandEncoderWithDescriptor:renderPass];
+    [renderEncoder setRenderPipelineState:pipelineState];
+
+    [renderEncoder setFragmentTexture:resultTexture atIndex:0];
+
+    // Draw a quad which fills the screen.
+    [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
 }
 
 void MetalRenderer::update()
@@ -102,6 +122,9 @@ void MetalRenderer::update()
     [renderEncoder endEncoding];
     [renderCmd presentDrawable:drawable];
     [renderCmd commit];
+  [renderCmd release];
+  [renderEncoder release];
+  [drawable release];
 }
 
 void MetalRenderer::render(Camera camera, RenderParameter parameter)
@@ -176,6 +199,6 @@ void MetalRenderer::render(Camera camera, RenderParameter parameter)
     [encoder dispatchThreadgroups:threadgroups threadsPerThreadgroup:threadsPerThreadgroup];
     [encoder endEncoding];
     [cmdBuffer commit];
-    [cmdBuffer waitUntilCompleted];
+    sampleTimes.push_back(0);
   }
 }
