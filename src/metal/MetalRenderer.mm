@@ -14,11 +14,10 @@ id<CAMetalDrawable> drawable;
 id<MTLDevice> device;
 id<MTLLibrary> library;
 id<MTLCommandQueue> queue;
-id<MTLCommandQueue> renderQueue;
 id<MTLFunction> function;
 id<MTLComputePipelineState> computePipeline;
-id<MTLTexture> accumulator;
-id<MTLTexture> resultTexture;
+id<MTLTexture> accumulator = nullptr;
+id<MTLTexture> resultTexture = nullptr;
   
 MTLRenderPassDescriptor* renderPass;
 id<MTLRenderCommandEncoder> renderEncoder;
@@ -34,54 +33,56 @@ MetalRenderer::MetalRenderer()
   width = 1920;
   height = 1080;
   device = MTLCreateSystemDefaultDevice();
-
+  
   library = [device newDefaultLibrary];
-
+  
   queue = [device newCommandQueue];
-    renderQueue = [device newCommandQueue];
-
+  
   scene = new MetalScene(device, queue);
-
-    function = [library newFunctionWithName:@"computeKernel"];
-
+  
+  function = [library newFunctionWithName:@"computeKernel"];
+  
   NSError* error;
-    computePipeline = [device newComputePipelineStateWithFunction:function error:&error];
+  computePipeline = [device newComputePipelineStateWithFunction:function error:&error];
   
   IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
   glfwSetErrorCallback(glfw_error_callback);
   glfwInit();
   float xscale = 1, yscale = 1;
   glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   handle = glfwCreateWindow(width / xscale, height / yscale, "RayTracer", nullptr, nullptr);
-
-
-  ImGui_ImplGlfw_InitForOpenGL(handle, false);
+  
+  ImGui_ImplGlfw_InitForOpenGL(handle, true);
   ImGui_ImplMetal_Init(device);
   
   NSWindow* cocoaWindow = glfwGetCocoaWindow(handle);
   metalLayer = [CAMetalLayer layer];
   metalLayer.device = device;
   metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    [[cocoaWindow contentView] setLayer:metalLayer];
-    [[cocoaWindow contentView] setWantsLayer:true];
-    renderPass = [[MTLRenderPassDescriptor alloc] init];
-    
-    MTLRenderPipelineDescriptor *renderDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-
-    renderDescriptor.vertexFunction = [library newFunctionWithName:@"copyVertex"];
-    renderDescriptor.fragmentFunction = [library newFunctionWithName:@"copyFragment"];
-
-    renderDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-
-    pipelineState = [device newRenderPipelineStateWithDescriptor:renderDescriptor error:&error];
+  [[cocoaWindow contentView] setLayer:metalLayer];
+  [[cocoaWindow contentView] setWantsLayer:true];
+  renderPass = [[MTLRenderPassDescriptor alloc] init];
+  
+  MTLRenderPipelineDescriptor *renderDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
+  
+  renderDescriptor.vertexFunction = [library newFunctionWithName:@"copyVertex"];
+  renderDescriptor.fragmentFunction = [library newFunctionWithName:@"copyFragment"];
+  
+  renderDescriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+  
+  pipelineState = [device newRenderPipelineStateWithDescriptor:renderDescriptor error:&error];
+  
+  [renderDescriptor release];
 }
 
-MetalRenderer::~MetalRenderer() {}
+MetalRenderer::~MetalRenderer() {
+  [renderPass release];
+}
 
 void MetalRenderer::addPointLight(PointLight point) { scene->addPointLight(point); }
 void MetalRenderer::addDirectionalLight(DirectionalLight dir) { scene->addDirectionalLight(dir); }
@@ -91,14 +92,16 @@ void MetalRenderer::generate() { scene->generate(); }
 
 void MetalRenderer::beginFrame()
 {
-    glfwPollEvents();
+  @autoreleasepool {
+    
+  glfwPollEvents();
   int w, h;
   glfwGetFramebufferSize(handle, &w, &h);
   framebufferWidth = width;
   framebufferHeight = height;
   metalLayer.drawableSize = CGSizeMake(framebufferWidth, framebufferHeight);
-drawable = [metalLayer nextDrawable];
-    renderCmd = [renderQueue commandBuffer];
+  drawable = [metalLayer nextDrawable];
+    renderCmd = [queue commandBuffer];
     renderPass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
     renderPass.colorAttachments[0].texture = drawable.texture;
     renderPass.colorAttachments[0].loadAction = MTLLoadActionClear;
@@ -113,18 +116,25 @@ drawable = [metalLayer nextDrawable];
 
     // Draw a quad which fills the screen.
     [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    
+    [renderEncoder retain];
+    [renderCmd retain];
+    [drawable retain];
+  }
 }
 
 void MetalRenderer::update()
 {
+  @autoreleasepool {
     ImGui::Render();
     ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), renderCmd, renderEncoder);
     [renderEncoder endEncoding];
+    [renderEncoder release];
     [renderCmd presentDrawable:drawable];
     [renderCmd commit];
-  [renderCmd release];
-  [renderEncoder release];
-  [drawable release];
+    [renderCmd release];
+    [drawable release];
+  }
 }
 
 void MetalRenderer::render(Camera camera, RenderParameter parameter)
@@ -140,6 +150,11 @@ void MetalRenderer::render(Camera camera, RenderParameter parameter)
       .height = parameter.height,
   };
 
+  if(accumulator != nullptr)
+  {
+    [accumulator release];
+    [resultTexture release];
+  }
     MTLTextureDescriptor* texDescriptor = [[MTLTextureDescriptor alloc] init];
     [texDescriptor setWidth:parameter.width];
     [texDescriptor setHeight:parameter.height];
@@ -147,58 +162,69 @@ void MetalRenderer::render(Camera camera, RenderParameter parameter)
     [texDescriptor setUsage:MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead];
     accumulator = [device newTextureWithDescriptor:texDescriptor];
     resultTexture = [device newTextureWithDescriptor:texDescriptor];
+  [texDescriptor release];
   for (uint i = 0; i < parameter.numSamples; ++i)
   {
-    id<MTLCommandBuffer> cmdBuffer = [queue commandBuffer];
-    id<MTLComputeCommandEncoder> encoder = [cmdBuffer computeCommandEncoder];
-    // cmdBuffer->addCompletedHandler([this](MTL::CommandBuffer* cmdBuffer)
-    //                                { std::memcpy(image.data(), resultTexture->buffer(), image.size() * sizeof(glm::vec3)); });
-    
+    if(!running)
+      return;
+    @autoreleasepool{
+      id<MTLCommandBuffer> cmdBuffer = [queue commandBuffer];
+      id<MTLComputeCommandEncoder> encoder = [cmdBuffer computeCommandEncoder];
+      // cmdBuffer->addCompletedHandler([this](MTL::CommandBuffer* cmdBuffer)
+      //                                { std::memcpy(image.data(), resultTexture->buffer(), image.size() * sizeof(glm::vec3)); });
+      
       SampleParams sample = {
-          .pass = i,
-              .samplesPerPixel = parameter.numSamples,
-          .numDirectionalLights = scene->getNumDirLights(),
-          .numPointLights = scene->getNumPointLights(),
+        .pass = i,
+        .samplesPerPixel = parameter.numSamples,
+        .numDirectionalLights = scene->getNumDirLights(),
+        .numPointLights = scene->getNumPointLights(),
       };
-    [encoder setComputePipelineState:computePipeline];
-    [encoder setBuffer:scene->indicesBuffer offset:0 atIndex:0];
-    [encoder setBuffer:scene->positionBuffer offset:0 atIndex:1];
-    [encoder setBuffer:scene->texCoordsBuffer offset:0 atIndex:2];
-    [encoder setBuffer:scene->normalBuffer offset:0 atIndex:3];
-    [encoder setBuffer:scene->modelRefsBuffer offset:0 atIndex:4];
-    [encoder setBuffer:scene->directionalLightBuffer offset:0 atIndex:5];
-    [encoder setBuffer:scene->pointLightBuffer offset:0 atIndex:6];
-    [encoder setBuffer:scene->instanceBuffer offset:0 atIndex:7];
-    [encoder setAccelerationStructure:scene->accelerationStructure atBufferIndex:8];
-    [encoder setTexture:accumulator atIndex:0];
-    [encoder setTexture:resultTexture atIndex:1];
-    [encoder setBytes:&gpuCam length:sizeof(GPUCamera) atIndex:9];
-    [encoder setBytes:&sample length:sizeof(SampleParams) atIndex:10];
-    [encoder useResource:scene->instanceBuffer usage:MTLResourceUsageRead];
-    [encoder useResource:scene->positionBuffer usage:MTLResourceUsageRead];
-    [encoder useResource:scene->texCoordsBuffer usage:MTLResourceUsageRead];
-    [encoder useResource:scene->normalBuffer usage:MTLResourceUsageRead];
-    [encoder useResource:scene->modelRefsBuffer usage:MTLResourceUsageRead];
-    if (scene->getNumDirLights() > 0)
-    {
-      [encoder useResource:scene->directionalLightBuffer usage:MTLResourceUsageRead];
-    }
-    if (scene->getNumPointLights() > 0)
-    {
+      [encoder setComputePipelineState:computePipeline];
+      [encoder setBuffer:scene->indicesBuffer offset:0 atIndex:0];
+      [encoder setBuffer:scene->positionBuffer offset:0 atIndex:1];
+      [encoder setBuffer:scene->texCoordsBuffer offset:0 atIndex:2];
+      [encoder setBuffer:scene->normalBuffer offset:0 atIndex:3];
+      [encoder setBuffer:scene->modelRefsBuffer offset:0 atIndex:4];
+      [encoder setBuffer:scene->directionalLightBuffer offset:0 atIndex:6];
+      [encoder setBuffer:scene->pointLightBuffer offset:0 atIndex:7];
+      [encoder setBuffer:scene->instanceBuffer offset:0 atIndex:8];
+      [encoder setAccelerationStructure:scene->accelerationStructure atBufferIndex:9];
+      [encoder setTexture:accumulator atIndex:0];
+      [encoder setTexture:resultTexture atIndex:1];
+      [encoder setBytes:&gpuCam length:sizeof(GPUCamera) atIndex:10];
+      [encoder setBytes:&sample length:sizeof(SampleParams) atIndex:11];
+      [encoder useResource:scene->instanceBuffer usage:MTLResourceUsageRead];
+      [encoder useResource:scene->positionBuffer usage:MTLResourceUsageRead];
+      [encoder useResource:scene->texCoordsBuffer usage:MTLResourceUsageRead];
+      [encoder useResource:scene->normalBuffer usage:MTLResourceUsageRead];
+      [encoder useResource:scene->modelRefsBuffer usage:MTLResourceUsageRead];
+      if (scene->getNumDirLights() > 0)
+      {
+        [encoder useResource:scene->directionalLightBuffer usage:MTLResourceUsageRead];
+      }
+      if (scene->getNumPointLights() > 0)
+      {
         [encoder useResource:scene->pointLightBuffer usage:MTLResourceUsageRead];
+      }
+      [encoder useResource:scene->instanceBuffer usage:MTLResourceUsageRead];
+      [encoder useResource:scene->accelerationStructure usage:MTLResourceUsageRead];
+      [encoder useResource:accumulator usage:MTLResourceUsageWrite];
+      [encoder useResource:resultTexture usage:MTLResourceUsageWrite];
+      NSUInteger width = (NSUInteger)parameter.width;
+      NSUInteger height = (NSUInteger)parameter.height;
+      MTLSize threadsPerThreadgroup = MTLSizeMake(8, 8, 1);
+      MTLSize threadgroups = MTLSizeMake((width + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
+                                         (height + threadsPerThreadgroup.height - 1) / threadsPerThreadgroup.height, 1);
+      [encoder dispatchThreadgroups:threadgroups threadsPerThreadgroup:threadsPerThreadgroup];
+      [encoder endEncoding];
+      [cmdBuffer commit];
+      [cmdBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull cmd) {
+        sampleTimes.push_back((cmd.GPUEndTime - cmd.GPUStartTime) * 1000.f);
+        if(sampleTimes.size() > 200)
+        {
+          sampleTimes.erase(sampleTimes.begin());
+        }
+      }];
     }
-    [encoder useResource:scene->instanceBuffer usage:MTLResourceUsageRead];
-    [encoder useResource:scene->accelerationStructure usage:MTLResourceUsageRead];
-    [encoder useResource:accumulator usage:MTLResourceUsageWrite];
-    [encoder useResource:resultTexture usage:MTLResourceUsageWrite];
-    NSUInteger width = (NSUInteger)parameter.width;
-    NSUInteger height = (NSUInteger)parameter.height;
-    MTLSize threadsPerThreadgroup = MTLSizeMake(8, 8, 1);
-    MTLSize threadgroups = MTLSizeMake((width + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
-                                       (height + threadsPerThreadgroup.height - 1) / threadsPerThreadgroup.height, 1);
-    [encoder dispatchThreadgroups:threadgroups threadsPerThreadgroup:threadsPerThreadgroup];
-    [encoder endEncoding];
-    [cmdBuffer commit];
-    sampleTimes.push_back(0);
   }
 }

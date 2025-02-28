@@ -68,7 +68,7 @@ struct BRDF
   float3 albedo = float3(1, 1, 1);
   float alpha = 1;
   float3 specularColor = float3(1, 1, 1);
-  float shininess = 0.04;
+  float shininess = 0.004;
   float3 emissive = float3(0, 0, 0);
   MaterialType materialType;
   float3 evaluate(HitInfo hit, float3 viewDir, float3 lightDir, float3 lightColor)
@@ -76,7 +76,7 @@ struct BRDF
     float3 normal = hit.normal;
     float diffuse = max(dot(normal, lightDir), 0.0f);
     float3 h = normalize(lightDir + viewDir);
-    float specular = pow(min(max(dot(normal, h), 0.0f), 1.0f), shininess);
+    float specular = pow(clamp(dot(normal, h), 0.0f, 1.0f), shininess);
     
     return (albedo * diffuse * lightColor) + float3(0.03, 0.03, 0.03);
   }
@@ -117,7 +117,7 @@ inline T interpolateVertexAttribute(constant T *attributes,
 
     // Compute the sum of the vertex attributes weighted by the barycentric coordinates.
     // The barycentric coordinates sum to one.
-    return (1.0f - uv.x - uv.y) * T0 + uv.x * T1 + uv.y * T2;
+    return (1.0f - uv.x - uv.y) * T2 + uv.x * T0 + uv.y * T1;
 }
 
 kernel void computeKernel(
@@ -129,10 +129,11 @@ kernel void computeKernel(
     constant packed_float2* texCoords [[buffer(2)]],
     constant packed_float3* normals [[buffer(3)]],
     constant ModelReference* modelRefs [[buffer(4)]],
-    constant DirectionalLight* directionalLights [[buffer(5)]],
-    constant PointLight* pointLights [[buffer(6)]],
-    constant MTLAccelerationStructureInstanceDescriptor* instances [[buffer(7)]],
-    instance_acceleration_structure accelerationStructure [[buffer(8)]],
+    constant BRDF* materials [[buffer(5)]],
+    constant DirectionalLight* directionalLights [[buffer(6)]],
+    constant PointLight* pointLights [[buffer(7)]],
+    constant MTLAccelerationStructureInstanceDescriptor* instances [[buffer(8)]],
+    instance_acceleration_structure accelerationStructure [[buffer(9)]],
     texture2d<float, access::read_write> accumulator [[texture(0)]],
     texture2d<float, access::read_write> image [[texture(1)]]
 )
@@ -201,11 +202,11 @@ kernel void computeKernel(
         const auto indices = indexBuffer[ref.indicesOffset + intersection.primitive_id];
         info.position = interpolateVertexAttribute(positions, ref.positionOffset, indices.x, indices.y, indices.z, intersection.triangle_barycentric_coord);
         info.texCoords = interpolateVertexAttribute(texCoords, ref.positionOffset, indices.x, indices.y, indices.z, intersection.triangle_barycentric_coord);
-        info.normal = interpolateVertexAttribute(normals, ref.positionOffset, indices.x, indices.y, indices.z, intersection.triangle_barycentric_coord);
+        info.normal = normalize(interpolateVertexAttribute(normals, ref.positionOffset, indices.x, indices.y, indices.z, intersection.triangle_barycentric_coord));
         info.normalLight = dot(info.normal, cam.direction) < 0 ? info.normal : -info.normal;
         
         BRDF brdf;
-        brdf.albedo = float3(0, 1, 0);
+      brdf.albedo = float3(0, 1, 0);
         
         float p = max(max(brdf.albedo.x, brdf.albedo.y), brdf.albedo.z);
         if (payload.depth > 5)
@@ -229,9 +230,9 @@ kernel void computeKernel(
             shadowRay.max_distance = INFINITY;
             i.accept_any_intersection(true);
             intersection = i.intersect(shadowRay, accelerationStructure, 0xff);
-            if(intersection.type != intersection_type::none)
+            if(intersection.type == intersection_type::none)
             {
-                payload.accumulatedRadiance += brdf.evaluate(info, -cam.direction, shadowRay.direction, directionalLights[l].color);
+                payload.accumulatedRadiance += brdf.evaluate(info, -cam.direction, normalize(shadowRay.direction), directionalLights[l].color);
             }
         }
         for (uint l = 0; l < sample.numPointLights; ++l)
@@ -243,7 +244,7 @@ kernel void computeKernel(
             shadowRay.max_distance = 1;
             i.accept_any_intersection(true);
             intersection = i.intersect(shadowRay, accelerationStructure, 0xff);
-            if (intersection.type != intersection_type::none)
+            if (intersection.type == intersection_type::none)
             {
                 float d = length(lightDir);
                 float illuminance = max(1 - d / pointLights[l].attenuation, 0.0f);
@@ -267,7 +268,11 @@ kernel void computeKernel(
         payload.depth++;
     }
     float resolver = float(sample.samplesPerPixel) / float(sample.pass+1);
-    float4 previous = accumulator.read(threadId);
+    float4 previous = float4(0);
+    if(sample.pass != 0)
+    {
+      previous = accumulator.read(threadId);
+    }
     float4 result = previous + float4(payload.accumulatedRadiance / float(sample.samplesPerPixel), 0);
     accumulator.write(result, threadId);
     image.write(pow(max(result * resolver, 0), float4(0.45f)), threadId);

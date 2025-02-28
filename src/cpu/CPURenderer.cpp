@@ -1,21 +1,31 @@
 #include "CPURenderer.h"
 #include "scene/Renderer.h"
+#include "CPUScene.h"
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
 #define GLSL(...) "#version 400\n" #__VA_ARGS__
 
+static void glfw_error_callback(int error, const char* description)
+{
+    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
 CPURenderer::CPURenderer()
 {
+  width = 1920;
+  height = 1080;
   glewExperimental = true;
+  glfwSetErrorCallback(glfw_error_callback);
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
-  window = glfwCreateWindow(width, height, "RayTracer", nullptr, nullptr);
-  glfwSwapInterval(1);
+  float xscale = 1, yscale = 1;
+  glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
+  window = glfwCreateWindow(width / xscale, height / yscale, "RayTracer", nullptr, nullptr);
   glfwMakeContextCurrent(window);
+  glfwSwapInterval(1);
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
@@ -28,6 +38,8 @@ CPURenderer::CPURenderer()
   ImGui_ImplOpenGL3_Init();
 
   glewInit();
+  
+  scene = new CPUScene();
 
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
@@ -89,6 +101,11 @@ CPURenderer::CPURenderer()
   glDeleteShader(vertShader);
   glDeleteShader(fragShader);
   glClearColor(0, 0, 0, 0);
+}
+
+CPURenderer::~CPURenderer()
+{
+  
 }
 
 glm::vec3 rand01(glm::uvec3 x)

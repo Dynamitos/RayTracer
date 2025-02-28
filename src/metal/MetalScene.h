@@ -6,24 +6,25 @@
 class MetalScene : public Scene
 {
 public:
-    MetalScene(id<MTLDevice> device, id<MTLCommandQueue> queue);
-    virtual ~MetalScene();
+  MetalScene(id<MTLDevice> device, id<MTLCommandQueue> queue);
+  virtual ~MetalScene();
 
-    virtual void createRayTracingHierarchy() override;
-    
-    id<MTLAccelerationStructure> newAccelerationStructureWithDescriptor(MTLAccelerationStructureDescriptor* descriptor);
+  virtual void createRayTracingHierarchy() override;
+  
+  id<MTLAccelerationStructure> newAccelerationStructureWithDescriptor(MTLAccelerationStructureDescriptor* descriptor);
 
-    id<MTLDevice> device;
-    id<MTLCommandQueue> queue;
+  id<MTLDevice> device;
+  id<MTLCommandQueue> queue;
 
-    id<MTLBuffer> indicesBuffer;
-    id<MTLBuffer> positionBuffer;
-    id<MTLBuffer> texCoordsBuffer;
-    id<MTLBuffer> normalBuffer;
-    id<MTLBuffer> modelRefsBuffer;
-    id<MTLBuffer> directionalLightBuffer;
-    id<MTLBuffer> pointLightBuffer;
-    id<MTLBuffer> instanceBuffer;
+  id<MTLBuffer> indicesBuffer;
+  id<MTLBuffer> positionBuffer;
+  id<MTLBuffer> texCoordsBuffer;
+  id<MTLBuffer> normalBuffer;
+  id<MTLBuffer> modelRefsBuffer;
+  id<MTLBuffer> materialsBuffer;
+  id<MTLBuffer> directionalLightBuffer;
+  id<MTLBuffer> pointLightBuffer;
+  id<MTLBuffer> instanceBuffer;
 
-    id<MTLAccelerationStructure> accelerationStructure;
+  id<MTLAccelerationStructure> accelerationStructure;
 };

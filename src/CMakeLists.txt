@@ -10,5 +10,6 @@ target_sources(RayTracer
 if(APPLE)
 	add_subdirectory(metal/)
 endif()
+add_subdirectory(cpu/)
 add_subdirectory(scene/)
 add_subdirectory(util/)
